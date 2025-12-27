@@ -99,6 +99,138 @@ export function calculateBestRange(startDate, vacationDays, workDays = [1, 2, 3,
  * @param {number[]} workDays - Array of day indices that are work days.
  * @returns {object} - The best range found (minimum cost).
  */
+/**
+ * Finds the top vacation periods with the best ratio (total days / vacation days used).
+ * @param {Date} startDate - The date to start looking from.
+ * @param {number} minLength - Minimum number of consecutive free days desired.
+ * @param {number} maxCost - Maximum vacation days willing to spend per period.
+ * @param {number[]} workDays - Array of day indices that are work days.
+ * @returns {object[]} - Array of top 10 ranges sorted by ratio (highest first).
+ */
+export function findBestRatioRanges(startDate, minLength = 3, maxCost = 5, workDays = [1, 2, 3, 4, 5]) {
+    const start = startOfDay(startDate);
+    const year = start.getFullYear();
+    const nextYear = year + 1;
+    const end = endOfYear(new Date(nextYear, 0, 1));
+
+    const holidaysThisYear = getDutchHolidays(year);
+    const holidaysNextYear = getDutchHolidays(nextYear);
+    const holidays = [...holidaysThisYear, ...holidaysNextYear];
+    const days = eachDayOfInterval({ start, end });
+
+    const dayInfos = days.map(date => {
+        const dayIndex = date.getDay();
+        const isWorkDay = workDays.includes(dayIndex);
+        const holiday = holidays.find(h => isSameDay(h.date, date));
+        const isFree = !isWorkDay || !!holiday;
+
+        return {
+            date,
+            isFree,
+            isWeekend: !isWorkDay,
+            isWorkDay,
+            holidayName: holiday ? holiday.name : null
+        };
+    });
+
+    const ranges = [];
+
+    // Use sliding window to find all valid ranges
+    let left = 0;
+    let currentCost = 0;
+
+    for (let right = 0; right < dayInfos.length; right++) {
+        if (!dayInfos[right].isFree) {
+            currentCost++;
+        }
+
+        // Shrink window if cost exceeds max
+        while (currentCost > maxCost && left <= right) {
+            if (!dayInfos[left].isFree) {
+                currentCost--;
+            }
+            left++;
+        }
+
+        // Check if current window is valid (meets minimum length)
+        const currentLength = right - left + 1;
+
+        if (currentLength >= minLength && currentCost > 0) {
+            const ratio = currentLength / currentCost;
+
+            // Get holiday names in this range for display
+            const windowDays = dayInfos.slice(left, right + 1);
+            const holidaysInRange = windowDays.filter(d => d.holidayName).map(d => d.holidayName);
+
+            ranges.push({
+                start: dayInfos[left].date,
+                end: dayInfos[right].date,
+                totalDays: currentLength,
+                cost: currentCost,
+                ratio: Math.round(ratio * 10) / 10,
+                days: windowDays,
+                holidays: [...new Set(holidaysInRange)] // Unique holiday names
+            });
+        }
+    }
+
+    // Also find ranges where cost is 0 (all free days) - these have infinite ratio
+    // but we'll score them high and cap at a reasonable display value
+    for (let i = 0; i < dayInfos.length; i++) {
+        if (!dayInfos[i].isFree) continue;
+
+        let j = i;
+        while (j < dayInfos.length && dayInfos[j].isFree) {
+            j++;
+        }
+
+        const length = j - i;
+        if (length >= minLength) {
+            const windowDays = dayInfos.slice(i, j);
+            const holidaysInRange = windowDays.filter(d => d.holidayName).map(d => d.holidayName);
+
+            ranges.push({
+                start: dayInfos[i].date,
+                end: dayInfos[j - 1].date,
+                totalDays: length,
+                cost: 0,
+                ratio: Infinity, // Free vacation!
+                days: windowDays,
+                holidays: [...new Set(holidaysInRange)]
+            });
+        }
+
+        i = j; // Skip to end of this free block
+    }
+
+    // Sort by ratio (highest first), then by total days (longest first)
+    ranges.sort((a, b) => {
+        if (b.ratio === Infinity && a.ratio === Infinity) {
+            return b.totalDays - a.totalDays;
+        }
+        if (b.ratio === Infinity) return 1;
+        if (a.ratio === Infinity) return -1;
+        if (b.ratio !== a.ratio) return b.ratio - a.ratio;
+        return b.totalDays - a.totalDays;
+    });
+
+    // Remove overlapping ranges, keeping the best ones
+    const uniqueRanges = [];
+    for (const range of ranges) {
+        const overlaps = uniqueRanges.some(existing => {
+            return range.start <= existing.end && range.end >= existing.start;
+        });
+
+        if (!overlaps) {
+            uniqueRanges.push(range);
+        }
+
+        if (uniqueRanges.length >= 10) break;
+    }
+
+    return uniqueRanges;
+}
+
 export function findCheapestRange(startDate, targetLength, workDays = [1, 2, 3, 4, 5]) {
     const start = startOfDay(startDate);
     const year = start.getFullYear();
