@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, parseISO, startOfToday, addYears, startOfYear } from 'date-fns';
+import { format, parseISO, startOfToday, addYears, endOfYear } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateBestRange, findCheapestRange, findBestRatioRanges } from './utils/calculator';
@@ -16,6 +16,7 @@ function App() {
   const [vacationDays, setVacationDays] = useState(20);
   const [targetLength, setTargetLength] = useState(14); // Default 2 weeks
   const [startDate, setStartDate] = useState(format(startOfToday(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfYear(addYears(new Date(), 1)), 'yyyy-MM-dd')); // Default end of next year
   const [workDays, setWorkDays] = useState([1, 2, 3, 4, 5]); // Default Mon-Fri
   const [result, setResult] = useState(null);
 
@@ -26,24 +27,25 @@ function App() {
   const [selectedRatioResult, setSelectedRatioResult] = useState(null);
 
   useEffect(() => {
-    if (startDate && mode !== 'school_holidays') {
+    if (startDate && endDate && mode !== 'school_holidays') {
       const start = parseISO(startDate);
+      const end = parseISO(endDate);
       let best = null;
 
       if (mode === 'max_free' && vacationDays >= 0) {
-        best = calculateBestRange(start, parseInt(vacationDays), workDays);
+        best = calculateBestRange(start, parseInt(vacationDays), workDays, end);
         setResult(best);
       } else if (mode === 'find_range' && targetLength > 0) {
-        best = findCheapestRange(start, parseInt(targetLength), workDays);
+        best = findCheapestRange(start, parseInt(targetLength), workDays, end);
         setResult(best);
       } else if (mode === 'best_ratio' && minLength > 0 && maxCost > 0) {
-        const ranges = findBestRatioRanges(start, parseInt(minLength), parseInt(maxCost), workDays);
+        const ranges = findBestRatioRanges(start, parseInt(minLength), parseInt(maxCost), workDays, end);
         setRatioResults(ranges);
         setSelectedRatioResult(null);
         setResult(null);
       }
     }
-  }, [mode, vacationDays, targetLength, startDate, workDays, minLength, maxCost]);
+  }, [mode, vacationDays, targetLength, startDate, endDate, workDays, minLength, maxCost]);
 
   const toggleWorkDay = (dayIndex) => {
     setWorkDays(prev => {
@@ -53,15 +55,6 @@ function App() {
         return [...prev, dayIndex].sort();
       }
     });
-  };
-
-  const setDateToday = () => {
-    setStartDate(format(startOfToday(), 'yyyy-MM-dd'));
-  };
-
-  const setDateNextYear = () => {
-    const nextYear = startOfYear(addYears(new Date(), 1));
-    setStartDate(format(nextYear, 'yyyy-MM-dd'));
   };
 
   const weekDays = [
@@ -212,21 +205,29 @@ function App() {
             )}
 
             <div className="input-group">
-              <label className="label" htmlFor="startDate">Zoeken vanaf:</label>
-              <div className="input-wrapper">
-                <input
-                  id="startDate"
-                  className="input"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-                <button onClick={setDateToday} className="btn-icon" title="Vandaag">
-                  Vandaag
-                </button>
-                <button onClick={setDateNextYear} className="btn-icon" title="Volgend jaar">
-                  1 Jan {new Date().getFullYear() + 1}
-                </button>
+              <label className="label" htmlFor="startDate">Zoekperiode:</label>
+              <div className="input-wrapper date-range">
+                <div className="date-input-group">
+                  <span className="date-label">Van</span>
+                  <input
+                    id="startDate"
+                    className="input"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="date-input-group">
+                  <span className="date-label">Tot</span>
+                  <input
+                    id="endDate"
+                    className="input"
+                    type="date"
+                    value={endDate}
+                    min={startDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 

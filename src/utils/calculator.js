@@ -5,7 +5,8 @@ import {
     isSameDay,
     differenceInCalendarDays,
     addDays,
-    startOfDay
+    startOfDay,
+    parseISO
 } from 'date-fns';
 import { getDutchHolidays } from './holidays';
 
@@ -14,21 +15,26 @@ import { getDutchHolidays } from './holidays';
  * @param {Date} startDate - The date to start looking from.
  * @param {number} vacationDays - Number of available vacation days.
  * @param {number[]} workDays - Array of day indices (0=Sunday, 1=Monday, etc.) that are work days. Default [1,2,3,4,5].
+ * @param {Date} [endDate] - Optional end date for the search period. Defaults to end of next year.
  * @returns {object} - The best range found.
  */
-export function calculateBestRange(startDate, vacationDays, workDays = [1, 2, 3, 4, 5]) {
+export function calculateBestRange(startDate, vacationDays, workDays = [1, 2, 3, 4, 5], endDate = null) {
     const start = startOfDay(startDate);
     const year = start.getFullYear();
     const nextYear = year + 1;
-    // Extend search period to end of next year to allow year-boundary crossing
-    const end = endOfYear(new Date(nextYear, 0, 1));
 
-    // Get holidays for both current year and next year
-    const holidaysThisYear = getDutchHolidays(year);
-    const holidaysNextYear = getDutchHolidays(nextYear);
-    const holidays = [...holidaysThisYear, ...holidaysNextYear];
+    // Use provided endDate or default to end of next year
+    const end = endDate ? startOfDay(endDate) : endOfYear(new Date(nextYear, 0, 1));
 
-    // Generate all days from start to end of next year
+    // Get holidays for all years in the range
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    let holidays = [];
+    for (let y = startYear; y <= endYear; y++) {
+        holidays = holidays.concat(getDutchHolidays(y));
+    }
+
+    // Generate all days from start to end
     const days = eachDayOfInterval({ start, end });
 
     // Map days to info
@@ -105,17 +111,25 @@ export function calculateBestRange(startDate, vacationDays, workDays = [1, 2, 3,
  * @param {number} minLength - Minimum number of consecutive free days desired.
  * @param {number} maxCost - Maximum vacation days willing to spend per period.
  * @param {number[]} workDays - Array of day indices that are work days.
+ * @param {Date} [endDate] - Optional end date for the search period. Defaults to end of next year.
  * @returns {object[]} - Array of top 10 ranges sorted by ratio (highest first).
  */
-export function findBestRatioRanges(startDate, minLength = 3, maxCost = 5, workDays = [1, 2, 3, 4, 5]) {
+export function findBestRatioRanges(startDate, minLength = 3, maxCost = 5, workDays = [1, 2, 3, 4, 5], endDate = null) {
     const start = startOfDay(startDate);
     const year = start.getFullYear();
     const nextYear = year + 1;
-    const end = endOfYear(new Date(nextYear, 0, 1));
 
-    const holidaysThisYear = getDutchHolidays(year);
-    const holidaysNextYear = getDutchHolidays(nextYear);
-    const holidays = [...holidaysThisYear, ...holidaysNextYear];
+    // Use provided endDate or default to end of next year
+    const end = endDate ? startOfDay(endDate) : endOfYear(new Date(nextYear, 0, 1));
+
+    // Get holidays for all years in the range
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    let holidays = [];
+    for (let y = startYear; y <= endYear; y++) {
+        holidays = holidays.concat(getDutchHolidays(y));
+    }
+
     const days = eachDayOfInterval({ start, end });
 
     const dayInfos = days.map(date => {
@@ -231,17 +245,30 @@ export function findBestRatioRanges(startDate, minLength = 3, maxCost = 5, workD
     return uniqueRanges;
 }
 
-export function findCheapestRange(startDate, targetLength, workDays = [1, 2, 3, 4, 5]) {
+/**
+ * Finds the range of a specific length that costs the least amount of vacation days.
+ * @param {Date} startDate - The date to start looking from.
+ * @param {number} targetLength - The desired number of consecutive free days.
+ * @param {number[]} workDays - Array of day indices that are work days.
+ * @param {Date} [endDate] - Optional end date for the search period. Defaults to end of next year.
+ * @returns {object} - The best range found (minimum cost).
+ */
+export function findCheapestRange(startDate, targetLength, workDays = [1, 2, 3, 4, 5], endDate = null) {
     const start = startOfDay(startDate);
     const year = start.getFullYear();
     const nextYear = year + 1;
-    // Extend search period to end of next year to allow year-boundary crossing
-    const end = endOfYear(new Date(nextYear, 0, 1));
 
-    // Get holidays for both current year and next year
-    const holidaysThisYear = getDutchHolidays(year);
-    const holidaysNextYear = getDutchHolidays(nextYear);
-    const holidays = [...holidaysThisYear, ...holidaysNextYear];
+    // Use provided endDate or default to end of next year
+    const end = endDate ? startOfDay(endDate) : endOfYear(new Date(nextYear, 0, 1));
+
+    // Get holidays for all years in the range
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    let holidays = [];
+    for (let y = startYear; y <= endYear; y++) {
+        holidays = holidays.concat(getDutchHolidays(y));
+    }
+
     const days = eachDayOfInterval({ start, end });
 
     const dayInfos = days.map(date => {
