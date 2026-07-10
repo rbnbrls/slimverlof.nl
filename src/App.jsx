@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, parseISO, startOfToday, addYears, endOfYear } from 'date-fns';
+import { format, parseISO, startOfToday, addYears, endOfYear, addDays } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateBestRange, findCheapestRange, findBestRatioRanges } from './utils/calculator';
@@ -16,7 +16,7 @@ function App() {
   const [vacationDays, setVacationDays] = useState(20);
   const [targetLength, setTargetLength] = useState(14); // Default 2 weeks
   const [startDate, setStartDate] = useState(format(startOfToday(), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(endOfYear(addYears(new Date(), 1)), 'yyyy-MM-dd')); // Default end of next year
+  const [endDate, setEndDate] = useState(format(addDays(new Date(), 365), 'yyyy-MM-dd')); // Default 365 days from today
   const [workDays, setWorkDays] = useState([1, 2, 3, 4, 5]); // Default Mon-Fri
   const [result, setResult] = useState(null);
 
