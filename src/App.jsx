@@ -1,56 +1,56 @@
-import { useState, useEffect } from 'react';
-import { format, parseISO, startOfToday, addYears, endOfYear, addDays } from 'date-fns';
+import { useState, useMemo } from 'react';
+import { format, parseISO, startOfToday, addDays } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateBestRange, findCheapestRange, findBestRatioRanges } from './utils/calculator';
 import CalendarView from './components/CalendarView';
-import { useTheme } from './hooks/useTheme';
 import ShareButton from './components/ShareButton';
 import ThemeSelector from './components/ThemeSelector';
 import SchoolHolidays from './components/SchoolHolidays';
 import './App.css';
 
 function App() {
-  const { theme } = useTheme(); // toggleTheme is now handled inside ThemeSelector, but we keep theme for other uses if needed
   const [mode, setMode] = useState('max_free'); // 'max_free', 'find_range', 'best_ratio', or 'school_holidays'
   const [vacationDays, setVacationDays] = useState(20);
   const [targetLength, setTargetLength] = useState(14); // Default 2 weeks
   const [startDate, setStartDate] = useState(format(startOfToday(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(addDays(new Date(), 365), 'yyyy-MM-dd')); // Default 365 days from today
   const [workDays, setWorkDays] = useState([1, 2, 3, 4, 5]); // Default Mon-Fri
-  const [result, setResult] = useState(null);
+  const [selectedRatioResult, setSelectedRatioResult] = useState(null);
 
   // New state for best_ratio mode
   const [minLength, setMinLength] = useState(5); // Minimum days free
   const [maxCost, setMaxCost] = useState(3); // Max vacation days per period
-  const [ratioResults, setRatioResults] = useState([]);
-  const [selectedRatioResult, setSelectedRatioResult] = useState(null);
 
-  useEffect(() => {
-    if (startDate && endDate && mode !== 'school_holidays') {
-      const start = parseISO(startDate);
-      const end = parseISO(endDate);
-      let best = null;
-
-      if (mode === 'max_free' && vacationDays >= 0) {
-        best = calculateBestRange(start, parseInt(vacationDays), workDays, end);
-        setResult(best);
-      } else if (mode === 'find_range' && targetLength > 0) {
-        best = findCheapestRange(start, parseInt(targetLength), workDays, end);
-        setResult(best);
-      } else if (mode === 'best_ratio' && minLength > 0 && maxCost > 0) {
-        const ranges = findBestRatioRanges(start, parseInt(minLength), parseInt(maxCost), workDays, end);
-        setRatioResults(ranges);
-        setSelectedRatioResult(null);
-        setResult(null);
-      }
+  // Derive result for max_free and find_range modes
+  const result = useMemo(() => {
+    if (!startDate || !endDate || mode === 'school_holidays' || mode === 'best_ratio') return null;
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
+    if (mode === 'max_free' && vacationDays >= 0) {
+      return calculateBestRange(start, parseInt(vacationDays), workDays, end);
     }
-  }, [mode, vacationDays, targetLength, startDate, endDate, workDays, minLength, maxCost]);
+    if (mode === 'find_range' && targetLength > 0) {
+      return findCheapestRange(start, parseInt(targetLength), workDays, end);
+    }
+    return null;
+  }, [mode, vacationDays, targetLength, startDate, endDate, workDays]);
+
+  // Derive ratioResults for best_ratio mode
+  const ratioResults = useMemo(() => {
+    if (!startDate || !endDate || mode !== 'best_ratio') return [];
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
+    if (minLength > 0 && maxCost > 0) {
+      return findBestRatioRanges(start, parseInt(minLength), parseInt(maxCost), workDays, end);
+    }
+    return [];
+  }, [mode, minLength, maxCost, startDate, endDate, workDays]);
 
   const toggleWorkDay = (dayIndex) => {
-    setWorkDays(prev => {
+    setWorkDays((prev) => {
       if (prev.includes(dayIndex)) {
-        return prev.filter(d => d !== dayIndex);
+        return prev.filter((d) => d !== dayIndex);
       } else {
         return [...prev, dayIndex].sort();
       }
@@ -76,9 +76,27 @@ function App() {
             className={`share-btn ${mode === 'school_holidays' ? 'active' : ''}`}
             onClick={() => setMode(mode === 'school_holidays' ? 'max_free' : 'school_holidays')}
             title="Schoolvakanties"
-            style={mode === 'school_holidays' ? { background: 'var(--color-primary)', color: 'white', borderColor: 'var(--color-primary)' } : {}}
+            style={
+              mode === 'school_holidays'
+                ? {
+                    background: 'var(--color-primary)',
+                    color: 'white',
+                    borderColor: 'var(--color-primary)',
+                  }
+                : {}
+            }
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
               <path d="M6 12v5c3 3 9 3 12 0v-5" />
             </svg>
@@ -98,7 +116,8 @@ function App() {
           transition={{ delay: 0.2 }}
           className="subtitle"
         >
-          Bereken hoe je met zo min mogelijk verlof of vakantiedagen zo lang mogelijk aaneengesloten vrij kunt zijn door slim gebruik te maken van feestdagen en weekenden.
+          Bereken hoe je met zo min mogelijk verlof of vakantiedagen zo lang mogelijk aaneengesloten
+          vrij kunt zijn door slim gebruik te maken van feestdagen en weekenden.
         </motion.p>
       </header>
 
@@ -132,7 +151,9 @@ function App() {
             <div className="input-group">
               {mode === 'max_free' && (
                 <>
-                  <label className="label" htmlFor="vacationDays">Verlofdagen om in te zetten:</label>
+                  <label className="label" htmlFor="vacationDays">
+                    Verlofdagen om in te zetten:
+                  </label>
                   <input
                     id="vacationDays"
                     className="input"
@@ -146,7 +167,9 @@ function App() {
               )}
               {mode === 'find_range' && (
                 <>
-                  <label className="label" htmlFor="targetLength">Hoe lang wil je vrij zijn?</label>
+                  <label className="label" htmlFor="targetLength">
+                    Hoe lang wil je vrij zijn?
+                  </label>
                   <input
                     id="targetLength"
                     className="input"
@@ -160,7 +183,9 @@ function App() {
               )}
               {mode === 'best_ratio' && (
                 <>
-                  <label className="label" htmlFor="availableDays">Hoeveel verlofdagen heb je totaal?</label>
+                  <label className="label" htmlFor="availableDays">
+                    Hoeveel verlofdagen heb je totaal?
+                  </label>
                   <input
                     id="availableDays"
                     className="input"
@@ -178,7 +203,9 @@ function App() {
             {mode === 'best_ratio' && (
               <>
                 <div className="input-group">
-                  <label className="label" htmlFor="minLength">Minimaal aantal dagen vrij:</label>
+                  <label className="label" htmlFor="minLength">
+                    Minimaal aantal dagen vrij:
+                  </label>
                   <input
                     id="minLength"
                     className="input"
@@ -190,7 +217,9 @@ function App() {
                   />
                 </div>
                 <div className="input-group">
-                  <label className="label" htmlFor="maxCost">Max verlof per periode:</label>
+                  <label className="label" htmlFor="maxCost">
+                    Max verlof per periode:
+                  </label>
                   <input
                     id="maxCost"
                     className="input"
@@ -205,7 +234,9 @@ function App() {
             )}
 
             <div className="input-group">
-              <label className="label" htmlFor="startDate">Zoekperiode:</label>
+              <label className="label" htmlFor="startDate">
+                Zoekperiode:
+              </label>
               <div className="input-wrapper date-range">
                 <div className="date-input-group">
                   <span className="date-label">Van</span>
@@ -234,7 +265,7 @@ function App() {
             <div className="input-group">
               <label className="label">Werkdagen / part-time</label>
               <div className="work-days-grid">
-                {weekDays.map(day => (
+                {weekDays.map((day) => (
                   <button
                     key={day.id}
                     onClick={() => toggleWorkDay(day.id)}
@@ -274,26 +305,34 @@ function App() {
                 });
 
                 // Find how many periods can be afforded
-                const affordablePeriods = ranksWithCumulative.filter(r => r.cumulativeCost <= parseInt(vacationDays));
+                const affordablePeriods = ranksWithCumulative.filter(
+                  (r) => r.cumulativeCost <= parseInt(vacationDays)
+                );
                 const affordableCount = affordablePeriods.length;
 
                 // Calculate total average factor for affordable periods
                 const totalFreeDays = affordablePeriods.reduce((sum, r) => sum + r.totalDays, 0);
                 const totalCost = affordablePeriods.reduce((sum, r) => sum + r.cost, 0);
-                const averageFactor = totalCost > 0 ? Math.round((totalFreeDays / totalCost) * 10) / 10 : 0;
+                const averageFactor =
+                  totalCost > 0 ? Math.round((totalFreeDays / totalCost) * 10) / 10 : 0;
 
                 return (
                   <>
                     {affordableCount > 0 && (
-                      <div className="affordable-info" style={{
-                        background: 'var(--color-success)',
-                        color: 'white',
-                        padding: '0.75rem 1rem',
-                        borderRadius: '8px',
-                        marginBottom: '1rem',
-                        fontWeight: '600'
-                      }}>
-                        ✨ Met {vacationDays} verlofdagen kun je {affordableCount} van deze periodes boeken! Gemiddelde factor: {averageFactor}x ({totalFreeDays} dagen vrij voor {totalCost} verlofdagen)
+                      <div
+                        className="affordable-info"
+                        style={{
+                          background: 'var(--color-success)',
+                          color: 'white',
+                          padding: '0.75rem 1rem',
+                          borderRadius: '8px',
+                          marginBottom: '1rem',
+                          fontWeight: '600',
+                        }}
+                      >
+                        ✨ Met {vacationDays} verlofdagen kun je {affordableCount} van deze periodes
+                        boeken! Gemiddelde factor: {averageFactor}x ({totalFreeDays} dagen vrij voor{' '}
+                        {totalCost} verlofdagen)
                       </div>
                     )}
 
@@ -307,7 +346,9 @@ function App() {
                           <motion.div
                             key={range.start.toString()}
                             className={`ranking-row ${isAffordable ? 'affordable' : 'not-affordable'} ${selectedRatioResult === range ? 'selected' : ''}`}
-                            onClick={() => setSelectedRatioResult(selectedRatioResult === range ? null : range)}
+                            onClick={() =>
+                              setSelectedRatioResult(selectedRatioResult === range ? null : range)
+                            }
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
                             style={{
@@ -322,42 +363,82 @@ function App() {
                               background: isAffordable
                                 ? 'linear-gradient(135deg, rgba(var(--color-success-rgb, 34, 197, 94), 0.15), rgba(var(--color-success-rgb, 34, 197, 94), 0.05))'
                                 : 'var(--color-surface)',
-                              border: selectedRatioResult === range
-                                ? '2px solid var(--color-primary)'
-                                : isAffordable
-                                  ? '2px solid var(--color-success)'
-                                  : '1px solid var(--color-border)',
-                              opacity: isAffordable ? 1 : 0.6
+                              border:
+                                selectedRatioResult === range
+                                  ? '2px solid var(--color-primary)'
+                                  : isAffordable
+                                    ? '2px solid var(--color-success)'
+                                    : '1px solid var(--color-border)',
+                              opacity: isAffordable ? 1 : 0.6,
                             }}
                           >
-                            <span style={{ fontSize: '1.25rem', textAlign: 'center' }}>{medal}</span>
+                            <span style={{ fontSize: '1.25rem', textAlign: 'center' }}>
+                              {medal}
+                            </span>
                             <div>
                               <div style={{ fontWeight: '600', color: 'var(--color-text)' }}>
-                                {format(range.start, 'd MMM', { locale: nl })} - {format(range.end, 'd MMM yyyy', { locale: nl })}
+                                {format(range.start, 'd MMM', { locale: nl })} -{' '}
+                                {format(range.end, 'd MMM yyyy', { locale: nl })}
                               </div>
                               {range.holidays.length > 0 && (
-                                <div style={{ fontSize: '0.8rem', color: 'var(--color-warning)', marginTop: '2px' }}>
-                                  🎉 {range.holidays.slice(0, 2).join(', ')}{range.holidays.length > 2 ? ` +${range.holidays.length - 2}` : ''}
+                                <div
+                                  style={{
+                                    fontSize: '0.8rem',
+                                    color: 'var(--color-warning)',
+                                    marginTop: '2px',
+                                  }}
+                                >
+                                  🎉 {range.holidays.slice(0, 2).join(', ')}
+                                  {range.holidays.length > 2
+                                    ? ` +${range.holidays.length - 2}`
+                                    : ''}
                                 </div>
                               )}
                             </div>
                             <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--color-text)' }}>{range.totalDays}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>dagen vrij</div>
+                              <div
+                                style={{
+                                  fontWeight: '700',
+                                  fontSize: '1.1rem',
+                                  color: 'var(--color-text)',
+                                }}
+                              >
+                                {range.totalDays}
+                              </div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                dagen vrij
+                              </div>
                             </div>
                             <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--color-secondary)' }}>{range.cost}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>verlof</div>
+                              <div
+                                style={{
+                                  fontWeight: '700',
+                                  fontSize: '1.1rem',
+                                  color: 'var(--color-secondary)',
+                                }}
+                              >
+                                {range.cost}
+                              </div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                verlof
+                              </div>
                             </div>
                             <div style={{ textAlign: 'center', minWidth: '50px' }}>
-                              <div style={{
-                                fontWeight: '700',
-                                fontSize: '1.1rem',
-                                color: range.ratio === Infinity ? 'var(--color-warning)' : 'var(--color-success)'
-                              }}>
+                              <div
+                                style={{
+                                  fontWeight: '700',
+                                  fontSize: '1.1rem',
+                                  color:
+                                    range.ratio === Infinity
+                                      ? 'var(--color-warning)'
+                                      : 'var(--color-success)',
+                                }}
+                              >
                                 {range.ratio === Infinity ? '∞' : `${range.ratio}x`}
                               </div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>factor</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                factor
+                              </div>
                             </div>
                           </motion.div>
                         );
@@ -376,7 +457,8 @@ function App() {
                   style={{ marginTop: '1.5rem' }}
                 >
                   <h3 style={{ marginBottom: '1rem', color: 'var(--color-text)' }}>
-                    📅 Details: {format(selectedRatioResult.start, 'd MMMM', { locale: nl })} - {format(selectedRatioResult.end, 'd MMMM yyyy', { locale: nl })}
+                    📅 Details: {format(selectedRatioResult.start, 'd MMMM', { locale: nl })} -{' '}
+                    {format(selectedRatioResult.end, 'd MMMM yyyy', { locale: nl })}
                   </h3>
 
                   <div className="stat-grid" style={{ marginBottom: '1rem' }}>
@@ -390,7 +472,9 @@ function App() {
                     </div>
                     <div className="stat-item">
                       <div className="stat-value" style={{ color: 'var(--color-success)' }}>
-                        {selectedRatioResult.ratio === Infinity ? '∞' : `${selectedRatioResult.ratio}x`}
+                        {selectedRatioResult.ratio === Infinity
+                          ? '∞'
+                          : `${selectedRatioResult.ratio}x`}
                       </div>
                       <div className="stat-label">Factor</div>
                     </div>
@@ -399,15 +483,24 @@ function App() {
                   <div className="calendar-section">
                     <div className="legend">
                       <div className="legend-item">
-                        <div className="legend-dot" style={{ backgroundColor: 'var(--color-secondary)' }}></div>
+                        <div
+                          className="legend-dot"
+                          style={{ backgroundColor: 'var(--color-secondary)' }}
+                        ></div>
                         <span>Verlof opnemen</span>
                       </div>
                       <div className="legend-item">
-                        <div className="legend-dot" style={{ backgroundColor: 'var(--color-warning)' }}></div>
+                        <div
+                          className="legend-dot"
+                          style={{ backgroundColor: 'var(--color-warning)' }}
+                        ></div>
                         <span>Feestdag</span>
                       </div>
                       <div className="legend-item">
-                        <div className="legend-dot" style={{ backgroundColor: 'var(--color-primary)' }}></div>
+                        <div
+                          className="legend-dot"
+                          style={{ backgroundColor: 'var(--color-primary)' }}
+                        ></div>
                         <span>Vrij / Weekend</span>
                       </div>
                     </div>
@@ -430,8 +523,12 @@ function App() {
                 <h2 className="result-title">
                   {mode === 'max_free' ? 'Jouw langste vakantie' : 'Jouw gunstigste periode'}
                 </h2>
-                <p className="subtitle" style={{ color: 'var(--color-primary)', fontWeight: '600' }}>
-                  {format(result.start, 'd MMMM yyyy', { locale: nl })} - {format(result.end, 'd MMMM yyyy', { locale: nl })}
+                <p
+                  className="subtitle"
+                  style={{ color: 'var(--color-primary)', fontWeight: '600' }}
+                >
+                  {format(result.start, 'd MMMM yyyy', { locale: nl })} -{' '}
+                  {format(result.end, 'd MMMM yyyy', { locale: nl })}
                 </p>
               </div>
 
@@ -456,35 +553,52 @@ function App() {
                 {/* Dates to Book */}
                 <div className="breakdown-section">
                   <h3 className="breakdown-title" style={{ color: 'var(--color-secondary)' }}>
-                    <div style={{ width: 8, height: 8, background: 'currentColor', borderRadius: 2 }} />
-                    Voor deze dagen moet je verlof opnemen: ({result.days.filter(d => !d.isFree).length})
+                    <div
+                      style={{ width: 8, height: 8, background: 'currentColor', borderRadius: 2 }}
+                    />
+                    Voor deze dagen moet je verlof opnemen: (
+                    {result.days.filter((d) => !d.isFree).length})
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {result.days.filter(d => !d.isFree).map(day => (
-                      <div key={day.date.toString()} className="list-item">
-                        <strong>{format(day.date, 'd MMM', { locale: nl })}</strong>
-                        <span>{format(day.date, 'EEEE', { locale: nl })}</span>
-                      </div>
-                    ))}
+                    {result.days
+                      .filter((d) => !d.isFree)
+                      .map((day) => (
+                        <div key={day.date.toString()} className="list-item">
+                          <strong>{format(day.date, 'd MMM', { locale: nl })}</strong>
+                          <span>{format(day.date, 'EEEE', { locale: nl })}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
 
                 {/* Free Days (Holidays & Weekends) */}
                 <div className="breakdown-section">
                   <h3 className="breakdown-title" style={{ color: 'var(--color-primary)' }}>
-                    <div style={{ width: 8, height: 8, background: 'currentColor', borderRadius: 2 }} />
-                    Deze dagen krijg je cadeau: ({result.days.filter(d => d.isFree).length})
+                    <div
+                      style={{ width: 8, height: 8, background: 'currentColor', borderRadius: 2 }}
+                    />
+                    Deze dagen krijg je cadeau: ({result.days.filter((d) => d.isFree).length})
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {result.days.filter(d => d.holidayName).map(day => (
-                      <div key={day.date.toString()} className="list-item" style={{ color: 'var(--color-warning)' }}>
-                        <strong>{format(day.date, 'd MMM', { locale: nl })}</strong>
-                        <span>🎉 {day.holidayName}</span>
-                      </div>
-                    ))}
-                    {result.days.filter(d => d.isFree && !d.holidayName).length > 0 && (
-                      <div className="list-item" style={{ fontStyle: 'italic', marginTop: '0.5rem' }}>
-                        + {result.days.filter(d => d.isFree && !d.holidayName).length} weekend/vrije dagen
+                    {result.days
+                      .filter((d) => d.holidayName)
+                      .map((day) => (
+                        <div
+                          key={day.date.toString()}
+                          className="list-item"
+                          style={{ color: 'var(--color-warning)' }}
+                        >
+                          <strong>{format(day.date, 'd MMM', { locale: nl })}</strong>
+                          <span>🎉 {day.holidayName}</span>
+                        </div>
+                      ))}
+                    {result.days.filter((d) => d.isFree && !d.holidayName).length > 0 && (
+                      <div
+                        className="list-item"
+                        style={{ fontStyle: 'italic', marginTop: '0.5rem' }}
+                      >
+                        + {result.days.filter((d) => d.isFree && !d.holidayName).length}{' '}
+                        weekend/vrije dagen
                       </div>
                     )}
                   </div>
@@ -495,15 +609,24 @@ function App() {
               <div className="calendar-section">
                 <div className="legend">
                   <div className="legend-item">
-                    <div className="legend-dot" style={{ backgroundColor: 'var(--color-secondary)' }}></div>
+                    <div
+                      className="legend-dot"
+                      style={{ backgroundColor: 'var(--color-secondary)' }}
+                    ></div>
                     <span>Verlof opnemen</span>
                   </div>
                   <div className="legend-item">
-                    <div className="legend-dot" style={{ backgroundColor: 'var(--color-warning)' }}></div>
+                    <div
+                      className="legend-dot"
+                      style={{ backgroundColor: 'var(--color-warning)' }}
+                    ></div>
                     <span>Feestdag</span>
                   </div>
                   <div className="legend-item">
-                    <div className="legend-dot" style={{ backgroundColor: 'var(--color-primary)' }}></div>
+                    <div
+                      className="legend-dot"
+                      style={{ backgroundColor: 'var(--color-primary)' }}
+                    ></div>
                     <span>Vrij / Weekend</span>
                   </div>
                 </div>
