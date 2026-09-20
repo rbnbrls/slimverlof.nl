@@ -1,0 +1,33 @@
+.summary-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.summary-panel.headline-primary {
+  border-left: 4px solid var(--color-primary);
+}
+
+.summary-panel.headline-secondary {
+  border-left: 4px solid var(--color-secondary);
+}
+
+.summary-panel.headline-success {
+  border-left: 4px solid var(--color-success);
+}
+
+.summary-panel.headline-warning {
+  border-left: 4px solid var(--color-warning);
+}
+
+.summary-weekdays {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.summary-panel h3 {
+  margin: 0 0 0.5rem;
+}
