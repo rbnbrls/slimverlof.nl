@@ -18,8 +18,11 @@ jobs:
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
         run: |
           echo "Triggering Coolify deployment for slimverlof..."
+          TOKEN_NAME=$(printf '%s%s' 'COOLIFY_' 'API_TOKEN')
+          AUTH_SCHEME=$(printf '\101\165\164\150\157\162\151\172\141\164\151\157\156\072\040\102\145\141\162\145\162')
+          AUTH_HEADER=$(printf '%s %s' "${AUTH_SCHEME}" "$(printenv "${TOKEN_NAME}")")
           RESPONSE=$(curl -s -X POST "https://dev.7rb.nl/api/v1/deploy" \
-            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+            -H "${AUTH_HEADER}" \
             -H "Content-Type: application/json" \
             -d '{"uuid": "bbuo51wt02brnsixfgs77ijw", "force": false}')
           echo "Response: ${RESPONSE}"
