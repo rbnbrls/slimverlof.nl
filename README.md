@@ -1,4 +1,24 @@
-# React + Vite
+# Slimverlof.nl
+
+## Deployment
+
+This is a Vite application. Production deployments must serve the generated
+`dist/` directory, not the repository root. The included `Dockerfile` builds
+the app and serves `dist/` through Nginx, including the fallback needed for
+client-side routes.
+
+For a webserver with its own build pipeline, use:
+
+```sh
+npm ci
+npm run build
+```
+
+Then configure the document root to the resulting `dist/` directory.
+
+The previous white page was caused by serving the source `index.html`: it
+loaded `/src/main.jsx` directly, which was returned with the wrong MIME type
+and therefore blocked by the browser.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
