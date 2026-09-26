@@ -38,7 +38,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Tests with coverage
+      - name: Deploy workflow tests (node --test)
+        run: npm test
+
+      - name: Unit tests with coverage (vitest)
         run: npm run coverage
 
       - name: Coverage line total

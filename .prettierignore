@@ -1,3 +1,11 @@
+# Generated output
 node_modules
 dist
 coverage
+
+# Pinned by the deploy lane: tests/deploy-workflow.test.mjs asserts the literal
+# text of .github/workflows/deploy.yml (the COOLIFY_* values keep their exact
+# quoting), so these files stay byte-identical to what that lane wrote.
+.github/workflows/deploy.yml
+tests/deploy-config.test.mjs
+tests/deploy-workflow.test.mjs
