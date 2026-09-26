@@ -9,15 +9,17 @@ One markdown file per user story, with YAML frontmatter:
 
 ```markdown
 ---
-title: "Add CSV export for transactions"
-status: todo        # todo | in-progress | done | cancelled
-priority: 10        # higher = sooner (default 10)
+title: 'Add CSV export for transactions'
+status: todo # todo | in-progress | done | cancelled
+priority: 10 # higher = sooner (default 10)
 ---
 
 ## Context
+
 Why this is needed.
 
 ## Acceptance criteria
+
 - [ ] functional criterion
 - [ ] test criterion
 ```
