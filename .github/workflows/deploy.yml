@@ -20,6 +20,18 @@
 #                 blaming the timeout. That is the difference between fail-fast
 #                 and fail-slow: every path here was already red, just late.
 #
+# Issue #14: the trigger used to POST an application uuid hardcoded in this file. A
+# Coolify application uuid identifies one record, so re-creating the application
+# (Coolify → delete + deploy again, 2026-09-25) retired that uuid and every later
+# run answered `404 {"message":"No resources found."}` — runs #11 and #12 failed
+# exactly there while `main` shipped nothing. The target is now resolved from the
+# provider by application name (`COOLIFY_APP_NAME`, default
+# `slimverlof-nl-production`), which survives a re-creation; an explicit
+# `COOLIFY_APP_UUID` (repository variable) still wins and skips the lookup. A
+# missing, ambiguous or unusable lookup answer fails the job with a typed
+# annotation, and a 404 from the trigger is reported as a missing application
+# rather than as a stale token.
+#
 # COOLIFY_API_TOKEN is a Coolify API token with Deploy permission (Coolify →
 # Keys & Tokens → API tokens) stored as a repository secret. It is referenced
 # only through env + ${{ secrets.* }} and never echoed (GitHub masks it anyway).
@@ -56,16 +68,112 @@ jobs:
           # run block applies, so this repo keeps its own values until a variable
           # is deliberately set.
           COOLIFY_API_BASE: ${{ vars.COOLIFY_API_BASE }}
+          COOLIFY_APP_NAME: ${{ vars.COOLIFY_APP_NAME }}
           COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
         run: |
           set -euo pipefail
 
           COOLIFY_API_BASE="${COOLIFY_API_BASE:-https://dev.7rb.nl/api/v1}"
-          COOLIFY_APP_UUID="${COOLIFY_APP_UUID:-bbuo51wt02brnsixfgs77ijw}"
+          # The deployment target is selected by application *name*, never by a uuid
+          # baked into this file. A Coolify application uuid identifies one record:
+          # re-creating the application (Coolify → delete + deploy again, which is
+          # how the 2026-09-25 re-creation happened) retires the old uuid, and every
+          # later run then failed with `404 {"message":"No resources found."}` —
+          # exactly what runs #11 and #12 of this workflow reported. The name
+          # survives a re-creation, so the workflow cannot go stale that way.
+          COOLIFY_APP_NAME="${COOLIFY_APP_NAME:-slimverlof-nl-production}"
+          # An explicit COOLIFY_APP_UUID (repository variable) wins over the lookup,
+          # so an operator can pin one application on purpose.
+          COOLIFY_APP_UUID="${COOLIFY_APP_UUID:-}"
 
           if [ -z "${COOLIFY_API_TOKEN:-}" ]; then
             echo "::error title=Coolify API token missing::The COOLIFY_API_TOKEN repository secret is empty or unset, so no deployment can be triggered. Add or rotate it under Settings → Secrets and variables → Actions (Coolify → Keys & Tokens → API tokens)."
             exit 1
+          fi
+
+          if [ -z "${COOLIFY_APP_UUID}" ]; then
+            # Resolve the one application named "${COOLIFY_APP_NAME}" on this
+            # instance. Zero matches (renamed or removed) and more than one match
+            # (ambiguous) are both typed failures: deploying to a guessed
+            # application is how production ends up serving the wrong revision.
+            APPS_FILE="$(mktemp)"
+            LOOKUP_CODE="$(curl -sS --fail-with-body -o "${APPS_FILE}" -w '%{http_code}' \
+              -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+              -H "Accept: application/json" \
+              "${COOLIFY_API_BASE}/applications" || true)"
+            APP_LIST="$(cat "${APPS_FILE}")"
+            rm -f "${APPS_FILE}"
+            case "${LOOKUP_CODE}" in
+              ''|*[!0-9]*) LOOKUP_CODE="000" ;;
+            esac
+            # The same one-line rule as the trigger and poll bodies (kanban
+            # t_0838bbdf): GitHub parses a step's stdout for workflow commands, so a
+            # body carrying a line break must not reach a log line intact.
+            APP_LIST_ONE_LINE="$(printf '%s' "${APP_LIST}" | tr -d '\r' | tr '\n\t' '  ' | cut -c1-500)"
+
+            echo "Resolving Coolify application ${COOLIFY_APP_NAME} on ${COOLIFY_API_BASE} (HTTP ${LOOKUP_CODE})"
+
+            if [ "${LOOKUP_CODE}" -lt 200 ] || [ "${LOOKUP_CODE}" -ge 300 ]; then
+              echo "::error title=Coolify application lookup failed::GET ${COOLIFY_API_BASE}/applications answered HTTP ${LOOKUP_CODE}: ${APP_LIST_ONE_LINE} (HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked — rotate it and re-run this workflow; issue #6)."
+              exit 1
+            fi
+
+            # The python helper exits 0 (uuid on stdout), 2 (the answer is not a
+            # list of applications), 3 (no application carries the name) or 4 (more
+            # than one does, with their uuids on stdout), so each case can be
+            # annotated for what it is instead of "the deploy failed".
+            set +e
+            COOLIFY_APP_UUID="$(printf '%s' "${APP_LIST}" | COOLIFY_APP_NAME="${COOLIFY_APP_NAME}" python3 -c '
+          import json, os, sys
+
+          name = os.environ["COOLIFY_APP_NAME"]
+          try:
+              payload = json.load(sys.stdin)
+          except ValueError:
+              sys.exit(2)
+          if not isinstance(payload, list):
+              sys.exit(2)
+          matches = [entry for entry in payload if isinstance(entry, dict) and entry.get("name") == name]
+          if not matches:
+              sys.exit(3)
+          if len(matches) > 1:
+              sys.stdout.write(" ".join(str(entry.get("uuid") or "?") for entry in matches))
+              sys.exit(4)
+          uuid = str(matches[0].get("uuid") or "")
+          if not uuid:
+              sys.exit(3)
+          sys.stdout.write(uuid)
+          ' 2>/dev/null)"
+            RESOLVE_STATUS=$?
+            set -e
+
+            case "${RESOLVE_STATUS}" in
+              0) ;;
+              2)
+                echo "::error title=Coolify application list is unusable::GET ${COOLIFY_API_BASE}/applications answered HTTP ${LOOKUP_CODE} with a body that is not a list of applications, so the deployment target ${COOLIFY_APP_NAME} cannot be resolved: ${APP_LIST_ONE_LINE}"
+                exit 1
+                ;;
+              4)
+                CANDIDATES_ONE_LINE="$(printf '%s' "${COOLIFY_APP_UUID}" | tr -d '\r' | tr '\n\t' '  ' | cut -c1-300)"
+                echo "::error title=Coolify application name is ambiguous::${COOLIFY_APP_NAME} matches more than one application on ${COOLIFY_API_BASE} (${CANDIDATES_ONE_LINE}), so the deployment target is not unique. Rename one of them, or set the COOLIFY_APP_UUID repository variable to the application that must be deployed."
+                exit 1
+                ;;
+              *)
+                echo "::error title=Coolify application not found::No application named ${COOLIFY_APP_NAME} exists on ${COOLIFY_API_BASE}, so nothing can be deployed. The application was renamed or re-created — runs #11 and #12 failed on a uuid that no longer existed for exactly that reason. Read GET ${COOLIFY_API_BASE}/applications back, then update COOLIFY_APP_NAME (or the COOLIFY_APP_UUID repository variable) to the live application."
+                exit 1
+                ;;
+            esac
+
+            # The resolved uuid is interpolated into the request body, so refuse
+            # anything that is not the plain identifier Coolify hands out.
+            case "${COOLIFY_APP_UUID}" in
+              ''|*[!A-Za-z0-9._-]*)
+                echo "::error title=Coolify returned an unusable application uuid::The application resolved for ${COOLIFY_APP_NAME} is not a plain [A-Za-z0-9._-] identifier, so it is not deployed: ${APP_LIST_ONE_LINE}"
+                exit 1
+                ;;
+            esac
+
+            echo "::notice title=Coolify deployment target::${COOLIFY_APP_NAME} (${COOLIFY_APP_UUID}) on ${COOLIFY_API_BASE}"
           fi
 
           echo "Triggering Coolify deployment for slimverlof..."
@@ -100,7 +208,18 @@ jobs:
           echo "Response: ${RESPONSE_ONE_LINE}"
 
           if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
-            echo "::error title=Coolify rejected the deployment::HTTP ${HTTP_CODE} from ${COOLIFY_API_BASE}/deploy: ${RESPONSE_ONE_LINE} (HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked — rotate it and re-run this workflow; issue #6)."
+            case "${HTTP_CODE}" in
+              404)
+                # Coolify answers `No resources found.` for an application uuid that
+                # does not exist on this instance — a re-created application has a
+                # different uuid — so this is a target problem, not a token problem
+                # (runs #11 and #12 of this workflow failed here).
+                echo "::error title=Coolify application not found::HTTP 404 from ${COOLIFY_API_BASE}/deploy for application ${COOLIFY_APP_UUID}: ${RESPONSE_ONE_LINE} (Coolify answers \"No resources found.\" when that application uuid does not exist on this instance. Re-read GET ${COOLIFY_API_BASE}/applications, then set COOLIFY_APP_NAME or the COOLIFY_APP_UUID repository variable to the live application.)"
+                ;;
+              *)
+                echo "::error title=Coolify rejected the deployment::HTTP ${HTTP_CODE} from ${COOLIFY_API_BASE}/deploy: ${RESPONSE_ONE_LINE} (HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked — rotate it and re-run this workflow; issue #6)."
+                ;;
+            esac
             exit 1
           fi
 
@@ -151,7 +270,7 @@ jobs:
         env:
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           COOLIFY_API_BASE: ${{ vars.COOLIFY_API_BASE }}
-          COOLIFY_APP_NAME: slimverlof.nl
+          COOLIFY_APP_NAME: slimverlof-nl-production
           DEPLOYMENT_UUID: ${{ steps.trigger.outputs.deployment_uuid }}
           DEPLOYMENT_ATTEMPTS: "60"
           DEPLOYMENT_WAIT_SECONDS: "20"
@@ -159,7 +278,7 @@ jobs:
           set -euo pipefail
 
           COOLIFY_API_BASE="${COOLIFY_API_BASE:-https://dev.7rb.nl/api/v1}"
-          COOLIFY_APP_NAME="${COOLIFY_APP_NAME:-slimverlof.nl}"
+          COOLIFY_APP_NAME="${COOLIFY_APP_NAME:-slimverlof-nl-production}"
           ATTEMPTS="${DEPLOYMENT_ATTEMPTS:-60}"
           WAIT_SECONDS="${DEPLOYMENT_WAIT_SECONDS:-20}"
           DEPLOYMENT_UUID="${DEPLOYMENT_UUID:-}"
