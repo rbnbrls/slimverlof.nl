@@ -55,6 +55,18 @@ jobs:
       - name: Unit tests with coverage (fails below the recorded thresholds)
         run: npm run coverage
 
+      # The report CI enforces must also be the report the repository publishes: the
+      # thresholds above say what the level must be, these two steps record what it
+      # *is*, in a file readable from the default branch. The check fails when a
+      # change moves coverage without refreshing the committed report.
+      - name: Publish the coverage report
+        if: always()
+        run: npm run coverage:report
+
+      - name: Committed coverage report matches this run
+        if: always()
+        run: npm run coverage:report:check
+
       - name: Coverage line total
         if: always()
         run: node scripts/coverage-summary.mjs

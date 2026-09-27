@@ -17,6 +17,8 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
+    "coverage:report": "node scripts/coverage-report.mjs",
+    "coverage:report:check": "node scripts/coverage-report.mjs --check",
     "preview": "vite preview"
   },
   "dependencies": {
