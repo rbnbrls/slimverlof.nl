@@ -31,9 +31,25 @@ const detail = [
   `functions ${total.functions.pct}%`,
 ].join(', ');
 
+// The gate the same run had to clear. Enforcement belongs to `npm run coverage`
+// (the vitest thresholds, which fail the job); this line only puts the level CI
+// enforced next to the level CI measured, so a green log stays auditable and an
+// unset threshold is reported instead of reading as "no threshold".
+const recorded = Number.parseInt(process.env.COVERAGE_LINES_THRESHOLD ?? '', 10);
+const gate =
+  Number.isInteger(recorded) && recorded >= 0 && recorded <= 100
+    ? `recorded threshold: ${recorded}% (COVERAGE_LINES_THRESHOLD) - ${
+        lines.pct >= recorded ? 'met' : 'not met'
+      }`
+    : 'recorded threshold: unavailable (reason: COVERAGE_LINES_THRESHOLD_unset)';
+
 console.log(lineTotal);
 console.log(detail);
+console.log(gate);
 
 if (process.env.GITHUB_STEP_SUMMARY) {
-  appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Coverage\n\n- ${lineTotal}\n- ${detail}\n`);
+  appendFileSync(
+    process.env.GITHUB_STEP_SUMMARY,
+    `## Coverage\n\n- ${lineTotal}\n- ${detail}\n- ${gate}\n`
+  );
 }
