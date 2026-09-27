@@ -57,4 +57,6 @@ The vitest suite runs in a jsdom environment and reports V8 coverage for everyth
 
 `npm run coverage` prints the per-file table plus a machine readable summary at `coverage/coverage-summary.json`. `node scripts/coverage-summary.mjs` prints the line total from that summary and fails when the summary is missing — an unmeasurable metric is reported as unavailable, never as zero. The coverage floors live in `vitest.config.js` and fail the run when they are not met.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs eslint, prettier, the production build, `node --test` and the coverage run on every push and pull request, and reports the line total in the job summary.
+The measured level is published, not only enforced: `npm run coverage:report` rewrites the two machine-readable reports (`coverage/coverage-summary.json` and `coverage/lcov.info`) with repository-relative paths, and both are committed, so the coverage of `main` is readable from the repository itself rather than from an expiring workflow artifact. `npm run coverage:report:check` fails when a change moves coverage without refreshing them, which is what keeps the published number equal to the code.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs eslint, prettier, the production build, `node --test` and the coverage run on every push and pull request, publishes the reports, fails when the committed report is out of date, and reports the line total in the job summary.

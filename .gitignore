@@ -11,7 +11,14 @@ node_modules
 dist
 dist-ssr
 *.local
-coverage
+
+# The coverage run's raw output. Only the two published reports below are committed:
+# `coverage/coverage-summary.json` and `coverage/lcov.info` are the machine-readable
+# levels CI enforces, written by scripts/coverage-report.mjs, and are what makes the
+# measured coverage readable from the default branch.
+coverage/*
+!coverage/coverage-summary.json
+!coverage/lcov.info
 
 # Editor directories and files
 .vscode/*
