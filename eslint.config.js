@@ -6,7 +6,7 @@ import reactPlugin from 'eslint-plugin-react';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'coverage']),
   {
     files: ['**/*.{js,jsx}'],
     plugins: {
@@ -35,6 +35,18 @@ export default defineConfig([
     settings: {
       react: {
         version: 'detect',
+      },
+    },
+  },
+  {
+    // Build/test configuration and helper scripts run on Node, not in a browser.
+    files: ['*.config.js', 'scripts/**/*.mjs'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
       },
     },
   },

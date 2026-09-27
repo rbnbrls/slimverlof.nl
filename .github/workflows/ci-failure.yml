@@ -13,7 +13,7 @@ name: Create issue on CI failure
 
 on:
   workflow_run:
-    workflows: ["Deploy to Coolify"]
+    workflows: ['Deploy to Coolify']
     types:
       - completed
 

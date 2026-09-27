@@ -36,4 +36,25 @@ The React Compiler is not enabled on this template because of its impact on dev 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
 # Hermes E2E Test - 2026-07-24T09:56:53Z
+
 This PR tests the automated Hermes kanban PR review and merge pipeline.
+
+## Tests, coverage and CI
+
+Two suites live side by side:
+
+```
+npm test             # deploy workflow tests (node --test, tests/*.test.mjs)
+npm run test:unit    # unit + component suite (vitest)
+npm run test:watch   # vitest watch mode
+npm run coverage     # vitest with V8 coverage (line total + coverage/)
+npm run lint         # eslint
+npm run lint:ci      # eslint, failing on warnings too (used by CI)
+npm run format:check # prettier check
+```
+
+The vitest suite runs in a jsdom environment and reports V8 coverage for everything under `src/`; its files use the `*.spec.*` pattern so `node --test` never picks them up.
+
+`npm run coverage` prints the per-file table plus a machine readable summary at `coverage/coverage-summary.json`. `node scripts/coverage-summary.mjs` prints the line total from that summary and fails when the summary is missing — an unmeasurable metric is reported as unavailable, never as zero. The coverage floors live in `vitest.config.js` and fail the run when they are not met.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs eslint, prettier, the production build, `node --test` and the coverage run on every push and pull request, and reports the line total in the job summary.

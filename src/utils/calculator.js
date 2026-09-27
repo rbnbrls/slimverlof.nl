@@ -1,9 +1,4 @@
-import {
-  eachDayOfInterval,
-  endOfYear,
-  isSameDay,
-  startOfDay,
-} from 'date-fns';
+import { eachDayOfInterval, endOfYear, isSameDay, startOfDay } from 'date-fns';
 import { getDutchHolidays } from './holidays';
 
 /**
