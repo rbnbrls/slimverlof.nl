@@ -16,6 +16,17 @@ jobs:
   quality:
     name: Lint, format, build and coverage
     runs-on: ubuntu-latest
+    # Recorded coverage gate. `npm run coverage` runs the vitest suite with these
+    # as its thresholds and fails the job when any metric drops below them; they
+    # are the levels measured on main at a898577 (lines 98.03%, statements 97.64%,
+    # functions 93.58%, branches 94.17%), floored to whole percent. vitest.config.js
+    # reads the same variables so a local run enforces an identical gate, and
+    # tests/coverage-gate.test.mjs fails when the two drift apart.
+    env:
+      COVERAGE_LINES_THRESHOLD: 98
+      COVERAGE_STATEMENTS_THRESHOLD: 97
+      COVERAGE_FUNCTIONS_THRESHOLD: 93
+      COVERAGE_BRANCHES_THRESHOLD: 94
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -41,7 +52,7 @@ jobs:
       - name: Deploy workflow tests (node --test)
         run: npm test
 
-      - name: Unit tests with coverage (vitest)
+      - name: Unit tests with coverage (fails below the recorded thresholds)
         run: npm run coverage
 
       - name: Coverage line total
