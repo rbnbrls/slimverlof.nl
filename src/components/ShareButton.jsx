@@ -1,11 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ShareButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const triggerRef = useRef(null);
+  const firstMenuItemRef = useRef(null);
 
   const currentUrl = window.location.href;
+
+  useEffect(() => {
+    if (isOpen) firstMenuItemRef.current?.focus();
+  }, [isOpen]);
+
+  const closeMenu = (restoreFocus = false) => {
+    setIsOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeMenu(true);
+    }
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -24,8 +42,16 @@ export default function ShareButton() {
   };
 
   return (
-    <div className="share-container">
-      <button className="share-btn" onClick={() => setIsOpen(!isOpen)} title="Deel deze pagina">
+    <div className="share-container" onKeyDown={handleKeyDown}>
+      <button
+        ref={triggerRef}
+        className="share-btn"
+        onClick={() => setIsOpen((open) => !open)}
+        title="Deel deze pagina"
+        aria-label="Deel deze pagina"
+        aria-expanded={isOpen}
+        aria-controls="share-menu"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -53,20 +79,29 @@ export default function ShareButton() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
+              onClick={() => closeMenu()}
+              aria-hidden="true"
             />
             <motion.div
+              id="share-menu"
               className="share-menu"
+              role="menu"
+              aria-label="Deelopties"
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.1 }}
             >
-              <button onClick={handleCopyLink} className="share-menu-item">
+              <button
+                ref={firstMenuItemRef}
+                onClick={handleCopyLink}
+                className="share-menu-item"
+                role="menuitem"
+              >
                 <span className="share-menu-icon">🔗</span>
                 {copied ? 'Gekopieerd!' : 'Kopieer link'}
               </button>
-              <button onClick={handleWhatsApp} className="share-menu-item">
+              <button onClick={handleWhatsApp} className="share-menu-item" role="menuitem">
                 <span className="share-menu-icon">💬</span>
                 WhatsApp
               </button>

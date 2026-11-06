@@ -35,6 +35,14 @@ describe('App', () => {
     expect(container.querySelector('#vacationDays')).toBeNull();
   });
 
+  it('exposes active mode state and announces mode changes', () => {
+    const { container } = render(<App />);
+    click(buttonByText(container, 'Dagen vrij'));
+
+    expect(find(container, '.mode-btn.active').getAttribute('aria-pressed')).toBe('true');
+    expect(find(container, '[aria-live="polite"]').textContent).toContain('Dagen vrij geopend');
+  });
+
   it('recalculates the result when the number of vacation days changes', async () => {
     const { container } = render(<App />);
     await settle();
@@ -114,7 +122,7 @@ describe('App', () => {
 
     click(schoolButton);
 
-    expect(container.textContent).toContain('Schoolvakanties 2025-2026');
+    expect(container.textContent).toContain('Schoolvakanties 2026-2027');
     expect(container.querySelector('.input-grid')).toBeNull();
 
     // Switching back restores the calculator inputs.

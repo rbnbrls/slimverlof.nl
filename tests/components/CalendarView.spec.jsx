@@ -55,6 +55,23 @@ describe('CalendarView', () => {
     expect(free).toEqual(['3', '4']);
   });
 
+  it('exposes calendar semantics and textual day statuses', () => {
+    const { container } = render(<CalendarView result={result} />);
+
+    expect(findAll(container, '[role="grid"]')).toHaveLength(2);
+    expect(find(container, '.status-holiday').getAttribute('aria-label')).toContain(
+      '5 mei 2025, feestdag: Bevrijdingsdag'
+    );
+    expect(find(container, '.status-book').getAttribute('aria-label')).toContain(
+      '30 april 2025, verlof opnemen'
+    );
+    expect(
+      findAll(container, '.calendar-day.empty').every(
+        (cell) => cell.getAttribute('aria-hidden') === 'true'
+      )
+    ).toBe(true);
+  });
+
   it('fills the leading and trailing cells of the week grid', () => {
     const { container } = render(<CalendarView result={result} />);
 

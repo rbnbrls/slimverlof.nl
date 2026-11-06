@@ -70,4 +70,22 @@ describe('ShareButton', () => {
     // AnimatePresence removes the menu once the exit animation has finished.
     expect(findAll(container, '.share-menu')).toHaveLength(0);
   });
+
+  it('closes with Escape and restores focus to the trigger', () => {
+    const { container } = render(<ShareButton />);
+    const trigger = find(container, '.share-btn');
+
+    click(trigger);
+    act(() => {
+      find(container, '.share-container').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })
+      );
+      find(container, '.share-container').dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      );
+    });
+
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(trigger);
+  });
 });

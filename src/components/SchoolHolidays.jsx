@@ -1,38 +1,17 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { formatSchoolHolidayRange, getSchoolYearsForDate } from '../utils/schoolHolidays';
 
-export default function SchoolHolidays() {
-  const holidays = [
-    {
-      name: 'Herfstvakantie',
-      north: '18 okt t/m 26 okt 2025',
-      middle: '18 okt t/m 26 okt 2025',
-      south: '11 okt t/m 19 okt 2025',
-    },
-    {
-      name: 'Kerstvakantie',
-      north: '20 dec 2025 t/m 4 jan 2026',
-      middle: '20 dec 2025 t/m 4 jan 2026',
-      south: '20 dec 2025 t/m 4 jan 2026',
-    },
-    {
-      name: 'Voorjaarsvakantie',
-      north: '21 feb t/m 1 mrt 2026',
-      middle: '14 feb t/m 22 feb 2026',
-      south: '14 feb t/m 22 feb 2026',
-    },
-    {
-      name: 'Meivakantie',
-      north: '25 apr t/m 3 mei 2026',
-      middle: '25 apr t/m 3 mei 2026',
-      south: '25 apr t/m 3 mei 2026',
-    },
-    {
-      name: 'Zomervakantie',
-      north: '4 jul t/m 16 aug 2026',
-      middle: '18 jul t/m 30 aug 2026',
-      south: '11 jul t/m 23 aug 2026',
-    },
-  ];
+const REGIONS = [
+  { id: 'north', label: 'Regio Noord' },
+  { id: 'middle', label: 'Regio Midden' },
+  { id: 'south', label: 'Regio Zuid' },
+];
+
+export default function SchoolHolidays({ today = new Date() }) {
+  const { current, available } = getSchoolYearsForDate(today);
+  const [selectedYearId, setSelectedYearId] = useState(current.id);
+  const selectedYear = available.find(({ id }) => id === selectedYearId) || current;
 
   return (
     <motion.div
@@ -41,28 +20,55 @@ export default function SchoolHolidays() {
       exit={{ opacity: 0, y: -20 }}
       className="holidays-container"
     >
-      <h2 className="result-title">Schoolvakanties 2025-2026</h2>
-      <p className="subtitle" style={{ marginBottom: '2rem' }}>
-        Overzicht van de adviesdata voor schoolvakanties van het ministerie van OCW.
-      </p>
+      <div className="holiday-heading">
+        <div>
+          <h2 className="result-title">Schoolvakanties {selectedYear.id}</h2>
+          <p className="subtitle" style={{ marginBottom: 0 }}>
+            Overzicht van de adviesdata voor schoolvakanties van het ministerie van OCW.
+          </p>
+        </div>
+        {available.length > 1 && (
+          <label className="holiday-year-selector" htmlFor="school-holiday-year">
+            Schooljaar
+            <select
+              id="school-holiday-year"
+              aria-label="Schooljaar"
+              value={selectedYear.id}
+              onChange={(event) => setSelectedYearId(event.target.value)}
+            >
+              {available.map(({ id }) => (
+                <option key={id} value={id}>
+                  {id}
+                  {id === current.id ? ' (huidig)' : ' (volgend)'}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
       <div className="holidays-table-wrapper">
         <table className="holidays-table">
+          <caption className="sr-only">
+            Schoolvakanties {selectedYear.id} per regio
+          </caption>
           <thead>
             <tr>
               <th>Vakantie</th>
-              <th>Regio Noord</th>
-              <th>Regio Midden</th>
-              <th>Regio Zuid</th>
+              {REGIONS.map((region) => (
+                <th key={region.id}>{region.label}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {holidays.map((holiday, index) => (
-              <tr key={index}>
+            {selectedYear.holidays.map((holiday) => (
+              <tr key={holiday.name}>
                 <td className="holiday-name">{holiday.name}</td>
-                <td data-label="Regio Noord">{holiday.north}</td>
-                <td data-label="Regio Midden">{holiday.middle}</td>
-                <td data-label="Regio Zuid">{holiday.south}</td>
+                {REGIONS.map((region) => (
+                  <td key={region.id} data-label={region.label}>
+                    {formatSchoolHolidayRange(holiday.regions[region.id])}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -74,6 +80,19 @@ export default function SchoolHolidays() {
           <strong>Let op:</strong> Scholen mogen afwijken van de adviesdata voor de voorjaars- en
           herfstvakantie. De meivakantie kan door scholen met een week worden uitgebreid. Controleer
           altijd de schoolgids.
+        </p>
+        {selectedYear.extendedMayHolidayAdvice && (
+          <p>
+            Voor een uitgebreide meivakantie adviseert OCW:{' '}
+            {formatSchoolHolidayRange(selectedYear.extendedMayHolidayAdvice)}.
+          </p>
+        )}
+        <p>
+          Bron:{' '}
+          <a href={selectedYear.sourceUrl} target="_blank" rel="noreferrer">
+            {selectedYear.sourceLabel} — schoolvakanties {selectedYear.id}
+          </a>{' '}
+          (adviesdata).
         </p>
       </div>
     </motion.div>

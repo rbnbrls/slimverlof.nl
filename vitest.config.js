@@ -55,6 +55,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: false,
     include: ['tests/**/*.spec.{js,jsx}'],
+    exclude: ['tests/browser/**'],
     setupFiles: ['tests/setup.js'],
     coverage: {
       provider: 'v8',

@@ -63,11 +63,19 @@ const readCommitted = (file) => {
 // a file of this project.
 const relative = (file) => {
   if (!path.isAbsolute(file)) return file;
-  const rel = path.relative(root, file).split(path.sep).join('/');
-  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
+  const candidateRoots = [root];
+  // macOS may expose the same temporary directory as /var and /private/var
+  // depending on whether the path came from os.tmpdir() or process.cwd().
+  if (process.platform === 'darwin' && root.startsWith('/private/')) {
+    candidateRoots.push(root.slice('/private'.length));
+  }
+  const rel = candidateRoots
+    .map((candidateRoot) => path.relative(candidateRoot, file))
+    .find((candidate) => candidate && !candidate.startsWith('..') && !path.isAbsolute(candidate));
+  if (!rel) {
     fail('coverage_report_outside_repo', `${file} is outside ${root}`);
   }
-  return rel;
+  return rel.split(path.sep).join('/');
 };
 
 const normalizeSummary = (text) => {

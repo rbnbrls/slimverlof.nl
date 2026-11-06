@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { format, parseISO, startOfToday, addDays } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +21,11 @@ function App() {
   // New state for best_ratio mode
   const [minLength, setMinLength] = useState(5); // Minimum days free
   const [maxCost, setMaxCost] = useState(3); // Max vacation days per period
+  const mainRef = useRef(null);
+
+  useEffect(() => {
+    mainRef.current?.focus();
+  }, [mode]);
 
   // Derive result for max_free and find_range modes
   const result = useMemo(() => {
@@ -58,13 +63,13 @@ function App() {
   };
 
   const weekDays = [
-    { id: 1, label: 'Ma' },
-    { id: 2, label: 'Di' },
-    { id: 3, label: 'Wo' },
-    { id: 4, label: 'Do' },
-    { id: 5, label: 'Vr' },
-    { id: 6, label: 'Za' },
-    { id: 0, label: 'Zo' },
+    { id: 1, label: 'Ma', fullLabel: 'maandag' },
+    { id: 2, label: 'Di', fullLabel: 'dinsdag' },
+    { id: 3, label: 'Wo', fullLabel: 'woensdag' },
+    { id: 4, label: 'Do', fullLabel: 'donderdag' },
+    { id: 5, label: 'Vr', fullLabel: 'vrijdag' },
+    { id: 6, label: 'Za', fullLabel: 'zaterdag' },
+    { id: 0, label: 'Zo', fullLabel: 'zondag' },
   ];
 
   return (
@@ -76,6 +81,8 @@ function App() {
             className={`share-btn ${mode === 'school_holidays' ? 'active' : ''}`}
             onClick={() => setMode(mode === 'school_holidays' ? 'max_free' : 'school_holidays')}
             title="Schoolvakanties"
+            aria-label="Schoolvakanties"
+            aria-pressed={mode === 'school_holidays'}
             style={
               mode === 'school_holidays'
                 ? {
@@ -107,6 +114,7 @@ function App() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="title"
+          id="page-title"
         >
           slimverlof.nl
         </motion.h1>
@@ -121,24 +129,39 @@ function App() {
         </motion.p>
       </header>
 
-      <main className="card">
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {mode === 'school_holidays'
+          ? 'Schoolvakantieoverzicht geopend.'
+          : mode === 'best_ratio'
+            ? 'Top 10 beste factor geopend.'
+            : mode === 'find_range'
+              ? 'Dagen vrij geopend.'
+              : 'Verlof inzetten geopend.'}
+        {result &&
+          ` Resultaat: ${format(result.start, 'd MMMM yyyy', { locale: nl })} tot ${format(result.end, 'd MMMM yyyy', { locale: nl })}, ${result.totalDays} dagen vrij en ${result.cost} verlofdagen.`}
+      </div>
+
+      <main className="card" ref={mainRef} tabIndex="-1" aria-labelledby="page-title">
         {/* Mode Switcher */}
-        <div className="mode-switcher">
+        <div className="mode-switcher" role="group" aria-label="Planningsmodus">
           <button
             className={`mode-btn ${mode === 'max_free' ? 'active' : ''}`}
             onClick={() => setMode('max_free')}
+            aria-pressed={mode === 'max_free'}
           >
             Verlof inzetten
           </button>
           <button
             className={`mode-btn ${mode === 'find_range' ? 'active' : ''}`}
             onClick={() => setMode('find_range')}
+            aria-pressed={mode === 'find_range'}
           >
             Dagen vrij
           </button>
           <button
             className={`mode-btn ${mode === 'best_ratio' ? 'active' : ''}`}
             onClick={() => setMode('best_ratio')}
+            aria-pressed={mode === 'best_ratio'}
           >
             🏆 Top 10 Beste Factor
           </button>
@@ -250,6 +273,9 @@ function App() {
                 </div>
                 <div className="date-input-group">
                   <span className="date-label">Tot</span>
+                  <label className="sr-only" htmlFor="endDate">
+                    Einddatum zoekperiode
+                  </label>
                   <input
                     id="endDate"
                     className="input"
@@ -270,6 +296,8 @@ function App() {
                     key={day.id}
                     onClick={() => toggleWorkDay(day.id)}
                     className={`day-btn ${workDays.includes(day.id) ? 'active' : ''}`}
+                    aria-label={`Werkdag ${day.fullLabel}`}
+                    aria-pressed={workDays.includes(day.id)}
                   >
                     {day.label}
                   </button>
@@ -288,9 +316,13 @@ function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               className="result-card"
+              role="region"
+              aria-labelledby="ratio-result-heading"
             >
               <div className="result-header">
-                <h2 className="result-title">🏆 Top 10 Beste Factor</h2>
+                <h2 id="ratio-result-heading" className="result-title">
+                  🏆 Top 10 Beste Factor
+                </h2>
                 <p className="subtitle">
                   Periodes gesorteerd op efficiëntie (meeste vrije dagen per verlofdag)
                 </p>
@@ -518,9 +550,11 @@ function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               className="result-card"
+              role="region"
+              aria-labelledby="calculation-result-heading"
             >
               <div className="result-header">
-                <h2 className="result-title">
+                <h2 id="calculation-result-heading" className="result-title">
                   {mode === 'max_free' ? 'Jouw langste vakantie' : 'Jouw gunstigste periode'}
                 </h2>
                 <p

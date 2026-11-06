@@ -11,7 +11,7 @@ export default function ThemeSelector() {
   ];
 
   return (
-    <div className="theme-selector-container">
+    <div className="theme-selector-container" role="group" aria-label="Thema">
       <div className="theme-segmented-control">
         {options.map((option) => (
           <button
@@ -19,11 +19,14 @@ export default function ThemeSelector() {
             onClick={() => toggleTheme(option.id)}
             className={`theme-segment ${theme === option.id ? 'active' : ''}`}
             title={option.label}
+            aria-label={`Thema: ${option.label}`}
+            aria-pressed={theme === option.id}
           >
             {theme === option.id && (
               <motion.div
                 layoutId="activeTheme"
                 className="theme-active-bg"
+                aria-hidden="true"
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
               />
             )}
