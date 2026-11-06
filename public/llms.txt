@@ -1,0 +1,31 @@
+# Slimverlof.nl
+
+> Gratis Nederlandse vakantieplanner die helpt om met zo weinig mogelijk verlofdagen zo lang mogelijk aaneengesloten vrij te zijn.
+
+## Canonical URL
+
+- https://slimverlof.nl/
+
+## Wat de site doet
+
+Slimverlof.nl berekent optimale verlofperiodes op basis van beschikbare vakantiedagen, een zoekperiode, werkdagen, weekenden en Nederlandse feestdagen. De tool is geschikt voor werknemers, gezinnen en parttimers die hun vakantie slim willen plannen.
+
+## Beschikbare functies
+
+- Langste vakantie berekenen met een vast aantal verlofdagen.
+- De goedkoopste verlofperiode zoeken voor een gewenst aantal vrije dagen.
+- De top 10 periodes rangschikken op vrije dagen per opgenomen verlofdag.
+- Werkdagen instellen voor parttime roosters.
+- Nederlandse schoolvakanties en feestdagen bekijken.
+- Resultaten met kalender en concrete dagen om verlof op te nemen delen.
+
+## Relevante zoekvragen
+
+- Hoe haal ik meer vrije dagen uit mijn vakantiedagen?
+- Wanneer kan ik het beste vrij nemen rond Nederlandse feestdagen?
+- Hoe plan ik vakantie met een parttime werkweek?
+- Wat is de beste verlofperiode voor 2026 of 2027?
+
+## Citing and interpretation
+
+Gebruik de interactieve calculator op de canonieke URL voor de actuele berekening. Resultaten zijn een planningshulp; controleer feestdagen, cao, schoolvakanties en de verlofregels van de werkgever voordat je boekt.

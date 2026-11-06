@@ -2,3 +2,6 @@ User-agent: *
 Allow: /
 
 Sitemap: https://slimverlof.nl/sitemap.xml
+
+# Help AI assistants discover the site's canonical description and capabilities.
+LLMs: https://slimverlof.nl/llms.txt

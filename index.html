@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="nl">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6d3fc0" />
 
     <!-- Primary Meta Tags -->
     <title>Slimverlof.nl - Maximaliseer je Vrije Dagen & Plan Slim Vakantie</title>
@@ -16,9 +17,11 @@
       name="keywords"
       content="vakantie plannen, vrije dagen, verlofdagen, bouwvak, schoolvakanties, feestdagen, brugdagen, parttime, vakantiedagen berekenen, slim verlof, vakantieplanner"
     />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large" />
     <meta name="language" content="Dutch" />
     <meta name="author" content="Slimverlof.nl" />
+    <link rel="canonical" href="https://slimverlof.nl/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
@@ -31,31 +34,37 @@
       property="og:description"
       content="Bereken hoe je met zo min mogelijk vakantiedagen zo lang mogelijk vrij kunt zijn. De slimste vakantieplanner voor Nederland."
     />
-    <meta property="og:image" content="https://slimverlof.nl/og-image.png" />
+    <meta property="og:image" content="https://slimverlof.nl/favicon.png" />
 
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://slimverlof.nl/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://slimverlof.nl/" />
     <meta
-      property="twitter:title"
+      name="twitter:title"
       content="Slimverlof.nl - Maximaliseer je Vrije Dagen & Plan Slim Vakantie"
     />
     <meta
-      property="twitter:description"
+      name="twitter:description"
       content="Bereken hoe je met zo min mogelijk vakantiedagen zo lang mogelijk vrij kunt zijn. De slimste vakantieplanner voor Nederland."
     />
-    <meta property="twitter:image" content="https://slimverlof.nl/og-image.png" />
+    <meta name="twitter:image" content="https://slimverlof.nl/favicon.png" />
 
     <!-- JSON-LD Structured Data -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
+        "@type": ["WebApplication", "SoftwareApplication"],
         "name": "Slimverlof.nl",
         "url": "https://slimverlof.nl",
         "description": "Een slimme tool om je vakantiedagen te optimaliseren door gebruik te maken van nationale feestdagen en weekenden.",
         "applicationCategory": "UtilityApplication",
+        "browserRequirements": "Requires JavaScript",
         "operatingSystem": "Web",
+        "inLanguage": "nl-NL",
+        "audience": {
+          "@type": "Audience",
+          "audienceType": "Werknemers, gezinnen en vakantieplanners in Nederland"
+        },
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -70,6 +79,39 @@
       }
     </script>
 
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Hoe plan ik de meeste vrije dagen met mijn vakantiedagen?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Vul je beschikbare verlofdagen en zoekperiode in. Slimverlof.nl combineert werkdagen, weekenden en Nederlandse feestdagen en toont de langste aaneengesloten periode vrij."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Kan ik Slimverlof.nl gebruiken voor parttime werken?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ja. Je kunt precies aangeven op welke dagen je werkt. De berekening houdt daar rekening mee bij het bepalen van verlofdagen en vrije dagen."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Welke Nederlandse feestdagen worden meegenomen?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "De planner gebruikt de Nederlandse feestdagen die in de gekozen zoekperiode vallen, naast weekenden en je eigen werkdagen."
+            }
+          }
+        ]
+      }
+    </script>
+
     <script
       async
       src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7215946470969144"
@@ -79,6 +121,26 @@
 
   <body>
     <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>Slim verlof plannen met Nederlandse feestdagen</h1>
+        <p>
+          Bereken met Slimverlof.nl hoe je met zo min mogelijk vakantiedagen zo lang mogelijk vrij
+          bent.
+        </p>
+        <p>
+          De planner combineert werkdagen, weekenden en Nederlandse feestdagen. Je kunt ook parttime
+          werkdagen instellen.
+        </p>
+        <h2>Zo werkt Slimverlof.nl</h2>
+        <ol>
+          <li>Vul het aantal beschikbare verlofdagen in.</li>
+          <li>Kies de zoekperiode en je werkdagen.</li>
+          <li>Bekijk de langste vakantie, voordeligste periode of beste vrije-dagenfactor.</li>
+        </ol>
+        <p>Schakel JavaScript in om de interactieve vakantieplanner te gebruiken.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

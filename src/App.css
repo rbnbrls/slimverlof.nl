@@ -102,6 +102,61 @@
   box-shadow: var(--shadow-lg);
 }
 
+.seo-content {
+  max-width: 860px;
+  margin: 0 auto;
+  color: var(--color-text);
+}
+
+.seo-content h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.65rem;
+}
+
+.seo-content h2:not(:first-child) {
+  margin-top: 2.25rem;
+}
+
+.seo-content h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.seo-content p {
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}
+
+.seo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.seo-grid > div {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card-bg);
+}
+
+.seo-content details {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.seo-content summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+@media (max-width: 680px) {
+  .seo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Mode Switcher */
 .mode-switcher {
   display: flex;
@@ -306,7 +361,9 @@
   padding: 1.5rem;
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .stat-item:hover {
@@ -451,7 +508,9 @@
   color: var(--color-text);
   cursor: default;
   position: relative;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .calendar-day:not(.empty):hover {

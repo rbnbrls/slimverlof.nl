@@ -670,6 +670,54 @@ function App() {
           )}
         </AnimatePresence>
       </main>
+
+      <section className="seo-content" aria-labelledby="about-heading">
+        <h2 id="about-heading">Plan slim verlof met feestdagen en weekenden</h2>
+        <p>
+          Slimverlof.nl helpt je om meer vrije dagen uit je vakantiedagen te halen. Geef je
+          verlofsaldo, zoekperiode en werkdagen op en ontdek welke periode de beste combinatie geeft
+          van vakantie, weekenden en Nederlandse feestdagen.
+        </p>
+        <div className="seo-grid">
+          <div>
+            <h3>Voor parttimers en fulltimers</h3>
+            <p>Stel je eigen werkdagen in, zodat de berekening aansluit op jouw rooster.</p>
+          </div>
+          <div>
+            <h3>Drie manieren om te plannen</h3>
+            <p>Zoek de langste vakantie, een gewenste periode of de beste vrije-dagenfactor.</p>
+          </div>
+          <div>
+            <h3>Direct inzicht in je verlof</h3>
+            <p>
+              Bekijk per dag wat verlof kost, welke feestdagen je cadeau krijgt en hoe lang je vrij
+              bent.
+            </p>
+          </div>
+        </div>
+        <h2>Veelgestelde vragen over verlof plannen</h2>
+        <details>
+          <summary>Hoe plan ik de meeste vrije dagen met mijn vakantiedagen?</summary>
+          <p>
+            Vul je beschikbare verlofdagen en zoekperiode in. De planner zoekt de langste
+            aaneengesloten periode met weekenden en Nederlandse feestdagen.
+          </p>
+        </details>
+        <details>
+          <summary>Kan ik de planner gebruiken als ik parttime werk?</summary>
+          <p>
+            Ja. Selecteer alleen de dagen waarop je normaal werkt. Zo zie je welke werkdagen je moet
+            opnemen en welke dagen vrij zijn.
+          </p>
+        </details>
+        <details>
+          <summary>Welke feestdagen worden meegenomen?</summary>
+          <p>
+            De planner neemt Nederlandse feestdagen mee die binnen je gekozen periode vallen.
+            Controleer altijd je cao en de afspraken met je werkgever.
+          </p>
+        </details>
+      </section>
     </div>
   );
 }
