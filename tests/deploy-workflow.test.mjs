@@ -1,6 +1,7 @@
 // Guards the honesty of `.github/workflows/deploy.yml`.
 //
-// The deploy workflow is the only automatic path from `main` to production for this
+// The deploy workflow is the only automatic path from `main` to the development
+// environment for this
 // repository, so a green run has to mean "Coolify was asked to build and the build
 // finished". Issue #6 was the opposite: the trigger step piped `curl -s` into a
 // `python3 -c ... || echo "unknown"` fallback, so Coolify answering
@@ -35,6 +36,7 @@ const QUEUED =
   '{"deployments":[{"message":"Application slimverlof.nl deployment queued.",' +
   '"resource_uuid":"bbuo51wt02brnsixfgs77ijw","deployment_uuid":"2koexlt0snkfsw5nnxbzz2ly"}]}';
 const QUEUED_UUID = '2koexlt0snkfsw5nnxbzz2ly';
+const DEVELOPMENT_APP_UUID = 'jnp92uorntmsa8bzodnngw9t';
 
 // Plays back one `code|body` fixture per call (the last one repeats) and mimics the
 // curl flags the workflow uses, including --fail/--fail-with-body's exit status.
@@ -197,7 +199,7 @@ const LIVE_DEVELOPMENT_APP = {
 };
 const LIVE_PRODUCTION_APP = {
   uuid: 'f309yufrvcgqoauhqfecsegm',
-  name: 'slimverlof-nl-production',
+  name: 'slimverlof-nl-development',
   fqdn: 'https://slimverlof.nl',
   git_repository: 'rbnbrls/slimverlof.nl.git',
 };
@@ -321,7 +323,13 @@ test('the deploy workflow no longer ships an application uuid that can go stale'
   const run = stepRun(TRIGGER_STEP);
   assert.doesNotMatch(run, /bbuo51wt02brnsixfgs77ijw/, 'the dead application uuid must not come back');
   assert.match(run, /COOLIFY_APP_NAME/, 'the target application must be selected by name');
-  assert.match(workflow, /COOLIFY_APP_NAME: \$\{\{ vars\.COOLIFY_APP_NAME \}\}/, 'the name must be overridable per repository');
+  assert.match(workflow, /COOLIFY_APP_NAME: slimverlof-nl-development/, 'the development application name must be explicit');
+});
+
+test('the default target is the requested Coolify development application', () => {
+  assert.match(workflow, new RegExp(`COOLIFY_APP_UUID: ${DEVELOPMENT_APP_UUID}`));
+  assert.match(workflow, /COOLIFY_APP_NAME: slimverlof-nl-development/);
+  assert.doesNotMatch(workflow, /vars\.COOLIFY_APP_UUID/);
 });
 
 test('trigger step fails closed when no application carries the target name', () => {
@@ -330,7 +338,7 @@ test('trigger step fails closed when no application carries the target name', ()
     assert.notEqual(status, 0, `an unresolvable target must fail the step\n${output}`);
     const annotation = output.split('\n').find((line) => line.startsWith('::error title=Coolify application not found'));
     assert.ok(annotation, `the missing application must be annotated:\n${output}`);
-    assert.ok(annotation.includes('slimverlof-nl-production'), 'the annotation must name the target that did not resolve');
+    assert.ok(annotation.includes('slimverlof-nl-development'), 'the annotation must name the target that did not resolve');
     assert.equal(curlCalls.length, 1, 'nothing may be deployed when the target does not resolve');
   }
 });
@@ -368,7 +376,7 @@ test('trigger step explains that a 403 is a Coolify access or allowlist problem'
 });
 
 test('trigger step fails when the application lookup answer is unusable', () => {
-  for (const body of ['{}', 'null', '"slimverlof-nl-production"', '<html>502 Bad Gateway</html>']) {
+  for (const body of ['{}', 'null', '"slimverlof-nl-development"', '<html>502 Bad Gateway</html>']) {
     const { status, output, curlCalls } = runStep(TRIGGER_STEP, { responses: [`200|${body}`] });
     assert.notEqual(status, 0, `200 with ${body} must fail the step, got exit ${status}\n${output}`);
     const annotation = output.split('\n').find((line) => line.startsWith('::error title=Coolify application list is unusable'));

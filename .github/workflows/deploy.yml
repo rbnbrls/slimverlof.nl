@@ -1,6 +1,6 @@
 # ── Deploy to Coolify ────────────────────────────────────────────────────────
 #
-# The only automatic path from `main` to production for this repo, so a green
+# The only automatic path from `main` to the development environment for this repo, so a green
 # run must mean "Coolify built and finished the deployment".
 #
 # Issue #6: this workflow used to pipe `curl -s` into
@@ -24,13 +24,10 @@
 # Coolify application uuid identifies one record, so re-creating the application
 # (Coolify → delete + deploy again, 2026-09-25) retired that uuid and every later
 # run answered `404 {"message":"No resources found."}` — runs #11 and #12 failed
-# exactly there while `main` shipped nothing. The target is now resolved from the
-# provider by application name (`COOLIFY_APP_NAME`, default
-# `slimverlof-nl-production`), which survives a re-creation; an explicit
-# `COOLIFY_APP_UUID` (repository variable) still wins and skips the lookup. A
-# missing, ambiguous or unusable lookup answer fails the job with a typed
-# annotation, and a 404 from the trigger is reported as a missing application
-# rather than as a stale token.
+# exactly there while `main` shipped nothing. The development application is now
+# selected by the UUID from the Coolify URL below. The UUID is intentionally kept
+# in the workflow so a stale repository variable cannot redirect deployment to a
+# different application.
 #
 # COOLIFY_API_TOKEN is a Coolify API token with Deploy permission (Coolify →
 # Keys & Tokens → API tokens) stored as a repository secret. It is referenced
@@ -63,27 +60,22 @@ jobs:
         id: trigger
         env:
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
-          # Repo variables may override the fleet defaults (kanban t_2b136b43,
-          # item 5). An unset variable expands to "" and the `:-` default in the
-          # run block applies, so this repo keeps its own values until a variable
-          # is deliberately set.
+          # The API base remains configurable per repository.
           COOLIFY_API_BASE: ${{ vars.COOLIFY_API_BASE }}
-          COOLIFY_APP_NAME: ${{ vars.COOLIFY_APP_NAME }}
-          COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+          COOLIFY_APP_NAME: slimverlof-nl-development
+          COOLIFY_APP_UUID: jnp92uorntmsa8bzodnngw9t
         run: |
           set -euo pipefail
 
           COOLIFY_API_BASE="${COOLIFY_API_BASE:-https://dev.7rb.nl/api/v1}"
-          # The deployment target is selected by application *name*, never by a uuid
-          # baked into this file. A Coolify application uuid identifies one record:
-          # re-creating the application (Coolify → delete + deploy again, which is
-          # how the 2026-09-25 re-creation happened) retires the old uuid, and every
-          # later run then failed with `404 {"message":"No resources found."}` —
-          # exactly what runs #11 and #12 of this workflow reported. The name
-          # survives a re-creation, so the workflow cannot go stale that way.
-          COOLIFY_APP_NAME="${COOLIFY_APP_NAME:-slimverlof-nl-production}"
-          # An explicit COOLIFY_APP_UUID (repository variable) wins over the lookup,
-          # so an operator can pin one application on purpose.
+          # The deployment target is pinned to the requested application UUID. A
+          # Coolify application UUID identifies one record, so changing or
+          # recreating the application requires updating this workflow explicitly.
+          COOLIFY_APP_NAME="${COOLIFY_APP_NAME:-slimverlof-nl-development}"
+          # Keep the application UUID pinned to the requested development app. This
+          # prevents a stale repository variable from selecting production.
+          # Development application configured at:
+          # https://dev.7rb.nl/project/hce6ezl2xjyh61urwkrzdalt/environment/sottlhkznd1jma7a9czoihdj/application/jnp92uorntmsa8bzodnngw9t
           COOLIFY_APP_UUID="${COOLIFY_APP_UUID:-}"
 
           if [ -z "${COOLIFY_API_TOKEN:-}" ]; then
@@ -280,7 +272,7 @@ jobs:
         env:
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           COOLIFY_API_BASE: ${{ vars.COOLIFY_API_BASE }}
-          COOLIFY_APP_NAME: slimverlof-nl-production
+          COOLIFY_APP_NAME: slimverlof-nl-development
           DEPLOYMENT_UUID: ${{ steps.trigger.outputs.deployment_uuid }}
           DEPLOYMENT_ATTEMPTS: "60"
           DEPLOYMENT_WAIT_SECONDS: "20"
@@ -288,7 +280,7 @@ jobs:
           set -euo pipefail
 
           COOLIFY_API_BASE="${COOLIFY_API_BASE:-https://dev.7rb.nl/api/v1}"
-          COOLIFY_APP_NAME="${COOLIFY_APP_NAME:-slimverlof-nl-production}"
+          COOLIFY_APP_NAME="${COOLIFY_APP_NAME:-slimverlof-nl-development}"
           ATTEMPTS="${DEPLOYMENT_ATTEMPTS:-60}"
           WAIT_SECONDS="${DEPLOYMENT_WAIT_SECONDS:-20}"
           DEPLOYMENT_UUID="${DEPLOYMENT_UUID:-}"
