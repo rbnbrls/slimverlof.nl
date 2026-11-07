@@ -108,7 +108,7 @@ export function calculateBestRange(
  * @param {number} maxCost - Maximum vacation days willing to spend per period.
  * @param {number[]} workDays - Array of day indices that are work days.
  * @param {Date} [endDate] - Optional end date for the search period. Defaults to end of next year.
- * @returns {object[]} - Array of top 10 ranges sorted by ratio (highest first).
+ * @returns {object[]} - Array of up to 6 suggested ranges sorted by ratio (highest first).
  */
 export function findBestRatioRanges(
   startDate,
@@ -241,7 +241,7 @@ export function findBestRatioRanges(
       uniqueRanges.push(range);
     }
 
-    if (uniqueRanges.length >= 10) break;
+    if (uniqueRanges.length >= 6) break;
   }
 
   return uniqueRanges;

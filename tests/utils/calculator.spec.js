@@ -114,7 +114,7 @@ describe('findBestRatioRanges', () => {
   const ranges = findBestRatioRanges(new Date(2025, 3, 1), 3, 5, workdays, new Date(2025, 5, 30));
 
   it('ranks the free holiday blocks first', () => {
-    expect(ranges).toHaveLength(10);
+    expect(ranges).toHaveLength(6);
     expect(ranges[0].ratio).toBe(Infinity);
     expect(iso(ranges[0].start)).toBe('2025-04-18');
     expect(iso(ranges[0].end)).toBe('2025-04-21');

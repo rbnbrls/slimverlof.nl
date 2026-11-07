@@ -90,7 +90,7 @@ export default function SchoolHolidays({ today = new Date() }) {
         <p>
           Bron:{' '}
           <a href={selectedYear.sourceUrl} target="_blank" rel="noreferrer">
-            {selectedYear.sourceLabel} — schoolvakanties {selectedYear.id}
+            {selectedYear.sourceLabel}, schoolvakanties {selectedYear.id}
           </a>{' '}
           (adviesdata).
         </p>

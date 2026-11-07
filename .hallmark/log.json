@@ -1,0 +1,29 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen workbench",
+  "theme": "dose",
+  "axes": "light/grotesk-sans/chromatic-green",
+  "hero": "compact utility header and planner workbench",
+  "nav": "kept utility header",
+  "footer": "kept SEO content",
+  "imagery": "none; product controls are the material",
+  "photos": [],
+  "sections": [
+   "planner",
+   "results",
+   "school holidays",
+   "SEO content"
+  ],
+  "signature": "planner controls on warm paper",
+  "entry": "Redesign slimverlof.nl as a calm Dutch vacation-planning workbench while keeping all wiring and content",
+  "fingerprint": "workbench/controls/results/records/utility-header/FAQ",
+  "waived": [
+   "F7: shared control radius keeps the planner visually coherent"
+  ],
+  "prompt": "full Hallmark redesign of slimverlof.nl",
+  "date": "2026-11-07"
+ }
+]

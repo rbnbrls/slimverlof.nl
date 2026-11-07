@@ -114,7 +114,14 @@ jobs:
             echo "Resolving Coolify application ${COOLIFY_APP_NAME} on ${COOLIFY_API_BASE} (HTTP ${LOOKUP_CODE})"
 
             if [ "${LOOKUP_CODE}" -lt 200 ] || [ "${LOOKUP_CODE}" -ge 300 ]; then
-              echo "::error title=Coolify application lookup failed::GET ${COOLIFY_API_BASE}/applications answered HTTP ${LOOKUP_CODE}: ${APP_LIST_ONE_LINE} (HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked — rotate it and re-run this workflow; issue #6)."
+              case "${LOOKUP_CODE}" in
+                403)
+                  echo "::error title=Coolify API access forbidden::GET ${COOLIFY_API_BASE}/applications answered HTTP 403: ${APP_LIST_ONE_LINE} The COOLIFY_API_TOKEN is valid but cannot access this Coolify team/API, or the instance blocks GitHub Actions runners. Enable API access, allow the runner network if an IP allowlist is active, and replace the secret with a token from the active team that has deploy permission."
+                  ;;
+                *)
+                  echo "::error title=Coolify application lookup failed::GET ${COOLIFY_API_BASE}/applications answered HTTP ${LOOKUP_CODE}: ${APP_LIST_ONE_LINE} (HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked — rotate it and re-run this workflow; issue #6)."
+                  ;;
+              esac
               exit 1
             fi
 
@@ -215,6 +222,9 @@ jobs:
                 # different uuid — so this is a target problem, not a token problem
                 # (runs #11 and #12 of this workflow failed here).
                 echo "::error title=Coolify application not found::HTTP 404 from ${COOLIFY_API_BASE}/deploy for application ${COOLIFY_APP_UUID}: ${RESPONSE_ONE_LINE} (Coolify answers \"No resources found.\" when that application uuid does not exist on this instance. Re-read GET ${COOLIFY_API_BASE}/applications, then set COOLIFY_APP_NAME or the COOLIFY_APP_UUID repository variable to the live application.)"
+                ;;
+              403)
+                echo "::error title=Coolify API access forbidden::HTTP 403 from ${COOLIFY_API_BASE}/deploy for application ${COOLIFY_APP_UUID}: ${RESPONSE_ONE_LINE} The COOLIFY_API_TOKEN is valid but cannot deploy in this Coolify team, or the instance blocks GitHub Actions runners. Enable API access, allow the runner network if an IP allowlist is active, and replace the secret with a token from the active team that has deploy permission."
                 ;;
               *)
                 echo "::error title=Coolify rejected the deployment::HTTP ${HTTP_CODE} from ${COOLIFY_API_BASE}/deploy: ${RESPONSE_ONE_LINE} (HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked — rotate it and re-run this workflow; issue #6)."
@@ -341,7 +351,11 @@ jobs:
             # and failing with a timeout that hides the real reason (a 401 here
             # means the token died mid-run; a 404 means the record is gone).
             if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
-              echo "::error title=Coolify API rejected the poll::GET ${COOLIFY_API_BASE}/deployments/${DEPLOYMENT_UUID} answered HTTP ${HTTP_CODE} on attempt ${attempt}/${ATTEMPTS}: ${BODY_ONE_LINE} — HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked (rotate it and re-run this workflow); HTTP 404 means the deployment or its application was removed mid-build. kanban t_2b136b43."
+              if [ "${HTTP_CODE}" = "403" ]; then
+                echo "::error title=Coolify API access forbidden::GET ${COOLIFY_API_BASE}/deployments/${DEPLOYMENT_UUID} answered HTTP 403 on attempt ${attempt}/${ATTEMPTS}: ${BODY_ONE_LINE} The COOLIFY_API_TOKEN is valid but cannot access this Coolify team/API, or the instance blocks GitHub Actions runners. Enable API access, allow the runner network if an IP allowlist is active, and replace the secret with a token from the active team that has deploy permission."
+              else
+                echo "::error title=Coolify API rejected the poll::GET ${COOLIFY_API_BASE}/deployments/${DEPLOYMENT_UUID} answered HTTP ${HTTP_CODE} on attempt ${attempt}/${ATTEMPTS}: ${BODY_ONE_LINE} — HTTP 401 'Unauthenticated.' means the COOLIFY_API_TOKEN secret is stale or revoked (rotate it and re-run this workflow); HTTP 404 means the deployment or its application was removed mid-build. kanban t_2b136b43."
+              fi
               exit 1
             fi
 

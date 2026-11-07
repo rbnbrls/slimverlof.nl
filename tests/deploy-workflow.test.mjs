@@ -358,6 +358,15 @@ test('trigger step fails when the application lookup is rejected', () => {
   assert.equal(curlCalls.length, 1, 'no deploy may be attempted without a resolved target');
 });
 
+test('trigger step explains that a 403 is a Coolify access or allowlist problem', () => {
+  const { status, output } = runStep(TRIGGER_STEP, { responses: ['403|{"message":"You are not allowed to access the API."}'] });
+  assert.notEqual(status, 0, 'a forbidden lookup must fail the step');
+  assert.match(output, /::error title=Coolify API access forbidden/);
+  assert.match(output, /active team/);
+  assert.match(output, /IP allowlist/);
+  assert.doesNotMatch(output, /stale or revoked/);
+});
+
 test('trigger step fails when the application lookup answer is unusable', () => {
   for (const body of ['{}', 'null', '"slimverlof-nl-production"', '<html>502 Bad Gateway</html>']) {
     const { status, output, curlCalls } = runStep(TRIGGER_STEP, { responses: [`200|${body}`] });
@@ -458,6 +467,16 @@ test('wait step fails fast on every other non-2xx poll, quoting the code and the
     assert.doesNotMatch(output, /did not reach 'finished'/);
     assert.equal(curlCalls.length, 2, `HTTP ${code} must stop the loop`);
   }
+});
+
+test('wait step explains a mid-deploy 403 without blaming a stale token', () => {
+  const { status, output, curlCalls } = waitStep(['200|{"status":"building"}', '403|{"message":"You are not allowed to access the API."}'], FULL_BUDGET);
+  assert.notEqual(status, 0, 'a forbidden poll must fail the step');
+  assert.match(output, /::error title=Coolify API access forbidden/);
+  assert.match(output, /active team/);
+  assert.match(output, /IP allowlist/);
+  assert.doesNotMatch(output, /stale or revoked/);
+  assert.equal(curlCalls.length, 2, 'the loop must stop at the forbidden poll');
 });
 
 test('wait step fails fast when the poll reports no usable HTTP status', () => {

@@ -5,45 +5,40 @@ export function useTheme() {
     const saved = localStorage.getItem('theme');
     return saved || 'system';
   });
+  const [systemTheme, setSystemTheme] = useState(() =>
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  );
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.removeAttribute('data-theme');
-
-    const applyTheme = (targetTheme) => {
-      if (targetTheme === 'dark') {
-        root.setAttribute('data-theme', 'dark');
-      } else {
-        root.setAttribute('data-theme', 'light');
-      }
-    };
 
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      applyTheme(mediaQuery.matches ? 'dark' : 'light');
+      const applySystemTheme = (matches) => {
+        const nextTheme = matches ? 'dark' : 'light';
+        setSystemTheme(nextTheme);
+        root.setAttribute('data-theme', nextTheme);
+      };
+
+      applySystemTheme(mediaQuery.matches);
 
       const handleChange = (e) => {
-        applyTheme(e.matches ? 'dark' : 'light');
+        applySystemTheme(e.matches);
       };
 
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
     } else {
-      applyTheme(theme);
+      root.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
     }
-
-    localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = (specificTheme) => {
-    if (specificTheme && ['light', 'dark', 'system'].includes(specificTheme)) {
-      setTheme(specificTheme);
-      return;
-    }
-    const modes = ['system', 'light', 'dark'];
-    const nextIndex = (modes.indexOf(theme) + 1) % modes.length;
-    setTheme(modes[nextIndex]);
+  const resolvedTheme = theme === 'system' ? systemTheme : theme;
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
-  return { theme, toggleTheme };
+  return { theme, resolvedTheme, toggleTheme };
 }

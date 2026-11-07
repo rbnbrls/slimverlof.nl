@@ -44,10 +44,12 @@ export default function ShareButton() {
   return (
     <div className="share-container" onKeyDown={handleKeyDown}>
       <button
+        type="button"
         ref={triggerRef}
         className="share-btn"
         onClick={() => setIsOpen((open) => !open)}
         title="Deel deze pagina"
+        data-tooltip="Deel deze planner"
         aria-label="Deel deze pagina"
         aria-expanded={isOpen}
         aria-controls="share-menu"
@@ -93,16 +95,17 @@ export default function ShareButton() {
               transition={{ duration: 0.1 }}
             >
               <button
+                type="button"
                 ref={firstMenuItemRef}
                 onClick={handleCopyLink}
                 className="share-menu-item"
                 role="menuitem"
               >
-                <span className="share-menu-icon">🔗</span>
+                <span className="share-menu-icon" aria-hidden="true">↗</span>
                 {copied ? 'Gekopieerd!' : 'Kopieer link'}
               </button>
-              <button onClick={handleWhatsApp} className="share-menu-item" role="menuitem">
-                <span className="share-menu-icon">💬</span>
+              <button type="button" onClick={handleWhatsApp} className="share-menu-item" role="menuitem">
+                <span className="share-menu-icon" aria-hidden="true">WA</span>
                 WhatsApp
               </button>
             </motion.div>
