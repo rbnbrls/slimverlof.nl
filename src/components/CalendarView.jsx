@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   format,
   eachDayOfInterval,
@@ -8,13 +9,35 @@ import {
   startOfWeek,
   endOfWeek,
   addMonths,
+  parseISO,
 } from 'date-fns';
 import { nl } from 'date-fns/locale';
+import { SCHOOL_HOLIDAY_YEARS } from '../data/schoolHolidays';
+
+const SCHOOL_REGIONS = [
+  { id: 'north', label: 'Noord' },
+  { id: 'middle', label: 'Midden' },
+  { id: 'south', label: 'Zuid' },
+];
 
 function CalendarView({ result }) {
+  const [showSchoolHolidays, setShowSchoolHolidays] = useState(true);
+  const [schoolRegion, setSchoolRegion] = useState('middle');
+
   if (!result) return null;
 
   const { start, end, days } = result;
+  const schoolHolidayDays = new Map();
+  if (showSchoolHolidays) {
+    SCHOOL_HOLIDAY_YEARS.forEach((schoolYear) => {
+      schoolYear.holidays.forEach((holiday) => {
+        const range = holiday.regions[schoolRegion];
+        eachDayOfInterval({ start: parseISO(range.start), end: parseISO(range.end) }).forEach(
+          (date) => schoolHolidayDays.set(format(date, 'yyyy-MM-dd'), holiday.name)
+        );
+      });
+    });
+  }
 
   // Determine months to show
   const startMonth = startOfMonth(start);
@@ -30,25 +53,57 @@ function CalendarView({ result }) {
   // Helper to get status of a day
   const getDayStatus = (date) => {
     const dayInfo = days.find((d) => isSameDay(d.date, date));
-    if (!dayInfo) return { status: 'none', holidayName: null };
-    if (dayInfo.holidayName) return { status: 'holiday', holidayName: dayInfo.holidayName };
-    return { status: dayInfo.isFree ? 'free' : 'book', holidayName: null };
+    const schoolHolidayName = schoolHolidayDays.get(format(date, 'yyyy-MM-dd')) || null;
+    if (!dayInfo) return { status: 'none', holidayName: null, schoolHolidayName };
+    if (dayInfo.holidayName) {
+      return { status: 'holiday', holidayName: dayInfo.holidayName, schoolHolidayName };
+    }
+    return { status: dayInfo.isFree ? 'free' : 'book', holidayName: null, schoolHolidayName };
   };
 
   return (
-    <div className="calendar-container">
-      {months.map((monthStart) => (
-        <MonthGrid
-          key={monthStart.toString()}
-          monthStart={monthStart}
-          getDayStatus={getDayStatus}
-        />
-      ))}
-    </div>
+    <>
+      <div className="calendar-options" aria-label="Kalenderopties">
+        <label className="calendar-toggle">
+          <input
+            type="checkbox"
+            checked={showSchoolHolidays}
+            onChange={(event) => setShowSchoolHolidays(event.target.checked)}
+          />
+          <span>Schoolvakanties tonen</span>
+        </label>
+        {showSchoolHolidays && (
+          <label className="calendar-region" htmlFor="calendar-school-region">
+            <span>Regio</span>
+            <select
+              id="calendar-school-region"
+              value={schoolRegion}
+              onChange={(event) => setSchoolRegion(event.target.value)}
+            >
+              {SCHOOL_REGIONS.map((region) => (
+                <option key={region.id} value={region.id}>
+                  {region.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      <div className="calendar-container">
+        {months.map((monthStart) => (
+          <MonthGrid
+            key={monthStart.toString()}
+            monthStart={monthStart}
+            getDayStatus={getDayStatus}
+            schoolRegion={schoolRegion}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
-function MonthGrid({ monthStart, getDayStatus }) {
+function MonthGrid({ monthStart, getDayStatus, schoolRegion }) {
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 }); // Monday start
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
@@ -68,6 +123,7 @@ function MonthGrid({ monthStart, getDayStatus }) {
     book: 'verlof opnemen',
     none: 'geen geselecteerde periode',
   };
+  const regionLabel = SCHOOL_REGIONS.find((region) => region.id === schoolRegion)?.label;
 
   return (
     <section className="month-card" aria-labelledby={`month-${monthStart.getTime()}`}>
@@ -100,18 +156,27 @@ function MonthGrid({ monthStart, getDayStatus }) {
                 );
               }
 
-              const { status, holidayName } = getDayStatus(date);
+              const { status, holidayName, schoolHolidayName } = getDayStatus(date);
               let className = 'calendar-day';
               if (status === 'free') className += ' status-free';
               if (status === 'holiday') className += ' status-holiday';
               if (status === 'book') className += ' status-book';
+              if (schoolHolidayName) className += ' status-school-holiday';
+
+              const labels = [
+                `${format(date, 'd MMMM yyyy', { locale: nl })}, ${holidayName ? `${statusLabels[status]}: ${holidayName}` : statusLabels[status]}`,
+              ];
+              if (schoolHolidayName) {
+                labels.push(`schoolvakantie ${schoolHolidayName}, regio ${regionLabel}`);
+              }
 
               return (
                 <div
                   key={date.toString()}
                   className={className}
                   role="gridcell"
-                  aria-label={`${format(date, 'd MMMM yyyy', { locale: nl })}, ${holidayName ? `${statusLabels[status]}: ${holidayName}` : statusLabels[status]}`}
+                  aria-label={labels.join(', ')}
+                  title={labels.join(', ')}
                 >
                   {format(date, 'd')}
                 </div>

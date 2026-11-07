@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import CalendarView from '../../src/components/CalendarView.jsx';
-import { findAll, find, render } from '../helpers/dom.js';
+import { click, findAll, find, render } from '../helpers/dom.js';
 
 // Range that spans two months: 30 April and 1-3 May are vacation days, 5 May is
 // Bevrijdingsdag and the weekend in between is free already.
@@ -86,5 +86,25 @@ describe('CalendarView', () => {
       (cell) => cell.className === 'calendar-day' && cell.textContent !== ''
     );
     expect(untouched.length).toBeGreaterThan(0);
+  });
+
+  it('shows school holidays with a region choice and can hide them', () => {
+    const schoolHolidayResult = {
+      ...result,
+      start: new Date(2026, 3, 25),
+      end: new Date(2026, 4, 3),
+      days: [],
+    };
+    const { container } = render(<CalendarView result={schoolHolidayResult} />);
+
+    expect(findAll(container, '.status-school-holiday').length).toBeGreaterThan(0);
+    expect(find(container, '.status-school-holiday').getAttribute('aria-label')).toContain(
+      'schoolvakantie Meivakantie, regio Midden'
+    );
+
+    expect(find(container, '#calendar-school-region').value).toBe('middle');
+
+    click(find(container, '.calendar-toggle input'));
+    expect(findAll(container, '.status-school-holiday')).toHaveLength(0);
   });
 });

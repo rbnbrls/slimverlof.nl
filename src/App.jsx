@@ -27,10 +27,24 @@ function App() {
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardComplete, setWizardComplete] = useState(false);
   const mainRef = useRef(null);
+  const resultRef = useRef(null);
 
   useEffect(() => {
     mainRef.current?.focus();
   }, [mode, wizardStep]);
+
+  useEffect(() => {
+    if (!wizardComplete) return undefined;
+
+    const frame = requestAnimationFrame(() => {
+      resultRef.current?.scrollIntoView?.({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [wizardComplete]);
 
   // Derive result for max_free and find_range modes
   const result = useMemo(() => {
@@ -89,6 +103,22 @@ function App() {
 
   const calculate = () => {
     setWizardComplete(true);
+  };
+
+  const selectPeriod = (period) => {
+    const today = startOfToday();
+    const presets = {
+      next365: [today, addDays(today, 365)],
+      year2027: [new Date(2027, 0, 1), new Date(2027, 11, 31)],
+      firstHalf2027: [new Date(2027, 0, 1), new Date(2027, 5, 30)],
+      secondHalf2027: [new Date(2027, 6, 1), new Date(2027, 11, 31)],
+    };
+    const selectedPeriod = presets[period];
+
+    if (!selectedPeriod) return;
+
+    setStartDate(format(selectedPeriod[0], 'yyyy-MM-dd'));
+    setEndDate(format(selectedPeriod[1], 'yyyy-MM-dd'));
   };
 
   const restartWizard = () => {
@@ -178,8 +208,9 @@ function App() {
           transition={{ delay: 0.2 }}
           className="subtitle"
         >
-          Plan je verlof met feestdagen, weekenden en je eigen werkdagen. Kies je doel en beantwoord
-          stap voor stap de vragen van de planner.
+          Haal meer vrije dagen uit je vakantiedagen. Kies wat je wilt bereiken, geef je zoekperiode
+          en werkdagen op en ontdek de slimste verlofperiodes, rekening houdend met weekenden en
+          feestdagen.
           <span className="school-holidays-hint">
             De schoolvakanties vind je via de knop met het school-icoon bovenaan. Daar kun je per
             schooljaar en regio de adviesdata bekijken.
@@ -226,7 +257,7 @@ function App() {
 
             {wizardStep === 1 && (
               <section className="wizard-step" aria-labelledby="wizard-start-heading">
-                <h2 id="wizard-start-heading">Wat wil je bereiken?</h2>
+                <h2 id="wizard-start-heading">Hoe wil jij je verlof slimmer plannen?</h2>
                 <p className="wizard-intro">Kies één doel. Daarna stellen we alleen de vragen die daarvoor nodig zijn.</p>
                 <div className="scenario-grid" role="group" aria-label="Kies je planningsdoel">
                   <button type="button" className="scenario-card" onClick={() => selectMode('max_free')}>
@@ -317,6 +348,23 @@ function App() {
               <section className="wizard-step" aria-labelledby="wizard-period-heading">
                 <h2 id="wizard-period-heading">In welke periode wil je zoeken?</h2>
                 <p className="wizard-intro">De standaardperiode loopt van vandaag tot één jaar vooruit.</p>
+                <div className="period-presets" aria-label="Kies een voorgedefinieerde periode">
+                  <span className="period-presets-label">Snel kiezen</span>
+                  <div className="period-presets-list">
+                    <button type="button" className="period-preset" onClick={() => selectPeriod('next365')}>
+                      365 dagen vooruit
+                    </button>
+                    <button type="button" className="period-preset" onClick={() => selectPeriod('year2027')}>
+                      Heel 2027
+                    </button>
+                    <button type="button" className="period-preset" onClick={() => selectPeriod('firstHalf2027')}>
+                      H1 2027
+                    </button>
+                    <button type="button" className="period-preset" onClick={() => selectPeriod('secondHalf2027')}>
+                      H2 2027
+                    </button>
+                  </div>
+                </div>
                 <div className="wizard-date-grid">
                   <label className="wizard-field" htmlFor="startDate">
                     <span>Vanaf</span>
@@ -365,6 +413,7 @@ function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               className="result-card"
+              ref={resultRef}
               role="region"
               aria-labelledby="ratio-result-heading"
             >
@@ -540,25 +589,20 @@ function App() {
                   <div className="calendar-section">
                     <div className="legend">
                       <div className="legend-item">
-                        <div
-                          className="legend-dot"
-                          style={{ backgroundColor: 'var(--color-secondary)' }}
-                        ></div>
+                        <div className="legend-dot legend-dot-book" />
                         <span>Verlof opnemen</span>
                       </div>
                       <div className="legend-item">
-                        <div
-                          className="legend-dot"
-                          style={{ backgroundColor: 'var(--color-warning)' }}
-                        ></div>
+                        <div className="legend-dot legend-dot-holiday" />
                         <span>Feestdag</span>
                       </div>
                       <div className="legend-item">
-                        <div
-                          className="legend-dot"
-                          style={{ backgroundColor: 'var(--color-primary)' }}
-                        ></div>
+                        <div className="legend-dot legend-dot-free" />
                         <span>Vrij / Weekend</span>
+                      </div>
+                      <div className="legend-item">
+                        <div className="legend-dot legend-dot-school" />
+                        <span>Schoolvakantie</span>
                       </div>
                     </div>
                     <CalendarView result={selectedRatioResult} />
@@ -575,6 +619,7 @@ function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               className="result-card"
+              ref={resultRef}
               role="region"
               aria-labelledby="calculation-result-heading"
             >
@@ -662,26 +707,21 @@ function App() {
               <div className="calendar-section">
                 <div className="legend">
                   <div className="legend-item">
-                    <div
-                      className="legend-dot"
-                      style={{ backgroundColor: 'var(--color-secondary)' }}
-                    ></div>
+                    <div className="legend-dot legend-dot-book" />
                     <span>Verlof opnemen</span>
                   </div>
                   <div className="legend-item">
-                    <div
-                      className="legend-dot"
-                      style={{ backgroundColor: 'var(--color-warning)' }}
-                    ></div>
+                    <div className="legend-dot legend-dot-holiday" />
                     <span>Feestdag</span>
                   </div>
                   <div className="legend-item">
-                    <div
-                      className="legend-dot"
-                      style={{ backgroundColor: 'var(--color-primary)' }}
-                    ></div>
+                    <div className="legend-dot legend-dot-free" />
                     <span>Vrij / Weekend</span>
                   </div>
+                    <div className="legend-item">
+                      <div className="legend-dot legend-dot-school" />
+                      <span>Schoolvakantie</span>
+                    </div>
                 </div>
                 <CalendarView result={result} />
               </div>

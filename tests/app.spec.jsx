@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { addDays, format, startOfToday } from 'date-fns';
 import { act } from 'react';
 import App from '../src/App.jsx';
 import {
@@ -128,6 +129,29 @@ describe('App', () => {
     click(buttonByText(container, 'Bereken mijn verlof'));
     await settle();
     expect(container.textContent).toContain('18 apr.');
+  });
+
+  it('offers predefined search periods', () => {
+    const { container } = render(<App />);
+
+    click(buttonByText(container, 'Maximaliseer je vrije tijd'));
+    click(buttonByText(container, 'Volgende'));
+
+    click(buttonByText(container, 'Heel 2027'));
+    expect(find(container, '#startDate').value).toBe('2027-01-01');
+    expect(find(container, '#endDate').value).toBe('2027-12-31');
+
+    click(buttonByText(container, 'H1 2027'));
+    expect(find(container, '#startDate').value).toBe('2027-01-01');
+    expect(find(container, '#endDate').value).toBe('2027-06-30');
+
+    click(buttonByText(container, 'H2 2027'));
+    expect(find(container, '#startDate').value).toBe('2027-07-01');
+    expect(find(container, '#endDate').value).toBe('2027-12-31');
+
+    click(buttonByText(container, '365 dagen vooruit'));
+    expect(find(container, '#startDate').value).toBe(format(startOfToday(), 'yyyy-MM-dd'));
+    expect(find(container, '#endDate').value).toBe(format(addDays(startOfToday(), 365), 'yyyy-MM-dd'));
   });
 
   it('ranks the best ratio periods and opens the calendar for a selection', async () => {
