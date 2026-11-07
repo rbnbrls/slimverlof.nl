@@ -1,173 +1,74 @@
-# ── CI Failure Issue Creator ─────────────────────────────────────────────────
-#
-# Automatically creates a GitHub issue when a workflow run fails.
-# Triggered by workflow_run completion — embedded script (no reusable workflow).
-#
-# Required permissions:
-#   - issues: write  (to create issues)
-#   - actions: read  (to fetch job details for the failed run)
-#
-# ─────────────────────────────────────────────────────────────────────────────
 
-name: Create issue on CI failure
+# Coolify deployment failure feedback loop
+# Creates or updates a repository issue with failed job details and logs.
+
+name: Create issue on Coolify deployment failure
 
 on:
   workflow_run:
     workflows: ['Deploy to Coolify']
-    types:
-      - completed
+    types: [completed]
 
 permissions:
   actions: read
+  contents: read
   issues: write
 
 jobs:
   create-issue:
-    if: |
-      github.event.workflow_run.conclusion == 'failure'
-      || github.event.workflow_run.conclusion == 'timed_out'
-      || github.event.workflow_run.conclusion == 'cancelled'
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' ||
+      github.event.workflow_run.conclusion == 'timed_out' ||
+      github.event.workflow_run.conclusion == 'cancelled'
     runs-on: self-hosted
     steps:
-      - name: Create GitHub issue for CI failure
+      - name: Create or update Coolify failure issue
         uses: actions/github-script@v8
         with:
           script: |
             const run = context.payload.workflow_run;
-            const repo = context.repo;
-            const label = 'ci-failure';
-            const runId = run.id;
-            const runNumber = run.run_number;
-            const workflowName = run.name;
-            const branch = run.head_branch;
-            const sha = run.head_sha;
+            const { owner, repo } = context.repo;
+            const NL = String.fromCharCode(10);
+            const marker = '<!-- coolify-failure-run:' + run.id + ' -->';
+            const conclusion = run.conclusion || 'unknown';
+            const workflow = run.name || 'Deploy to Coolify';
+            const branch = run.head_branch || '(unknown)';
             const runUrl = run.html_url;
-            const event = run.event;
-            const conclusion = run.conclusion;
-            const dedupMarker = '<!-- ci-failure-run:' + runId + ' -->';
-
-            // --- 1. Fetch job details for richer issue content ----------
-            let failedJobs = [];
-            try {
-              const jobsResp = await github.rest.actions.listJobsForWorkflowRun({
-                owner: repo.owner,
-                repo: repo.repo,
-                run_id: runId,
-              });
-              failedJobs = jobsResp.data.jobs
-                .filter(j => j.conclusion === 'failure' || j.conclusion === 'timed_out' || j.conclusion === 'cancelled')
-                .map(j => ({ name: j.name, conclusion: j.conclusion, id: j.id }));
-            } catch (e) {
-              console.warn('Could not fetch job details:', e.message);
-            }
-
-            // --- 2. Dedup: search for existing open issue with same run ID ---
-            let existingIssue = null;
-            try {
-              const searchResp = await github.rest.search.issuesAndPullRequests({
-                q: '"' + dedupMarker + '" repo:' + repo.owner + '/' + repo.repo + ' is:issue is:open label:' + label,
-                per_page: 1,
-              });
-              if (searchResp.data.items.length > 0) {
-                existingIssue = searchResp.data.items[0];
+            const sha = run.head_sha || '(unknown)';
+            const jobsResponse = await github.rest.actions.listJobsForWorkflowRun({ owner, repo, run_id: run.id, per_page: 100 });
+            const failedJobs = jobsResponse.data.jobs.filter((job) => ['failure', 'timed_out', 'cancelled'].includes(job.conclusion));
+            const logSections = [];
+            for (const job of failedJobs.slice(0, 10)) {
+              try {
+                const response = await github.request('GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs', { owner, repo, job_id: job.id });
+                let log = String(response.data || '').split(String.fromCharCode(13)).join('').trim().slice(-12000);
+                logSections.push('### ' + job.name + ' (' + job.conclusion + ')' + NL + NL + 'LOG START' + NL + (log || '(no log content returned)') + NL + 'LOG END');
+              } catch (error) {
+                logSections.push('### ' + job.name + ' (' + job.conclusion + ')' + NL + NL + 'Could not download this job log: ' + error.message);
               }
-            } catch (e) {
-              console.warn('Dedup search failed (may proceed):', e.message);
             }
-
-            if (existingIssue) {
-              // --- Existing issue found -- add a comment with updated info ---
-              await github.rest.issues.createComment({
-                owner: repo.owner,
-                repo: repo.repo,
-                issue_number: existingIssue.number,
-                body: [
-                  '**Re-failure notice** -- workflow run #' + runNumber + ' failed again.',
-                  '',
-                  '**Workflow:** ' + workflowName,
-                  '**Branch:** `' + branch + '`',
-                  '**Run:** ' + runUrl,
-                  '**Conclusion:** `' + conclusion + '`',
-                  '**Timestamp:** ' + new Date().toISOString(),
-                  '',
-                  failedJobs.length > 0
-                    ? '### Failed jobs\n\n' +
-                      '| Job | Status |\n' +
-                      '|-----|--------|\n' +
-                      failedJobs.map(j => '| ' + j.name + ' | ' + j.conclusion + ' |').join('\n')
-                    : '',
-                  '',
-                  dedupMarker,
-                ].join('\n'),
-              });
-              console.log('Commented on existing issue #' + existingIssue.number);
+            const failedJobTable = failedJobs.length ? failedJobs.map((job) => '| ' + job.name + ' | ' + job.conclusion + ' |').join(NL) : '| (job details unavailable) | ' + conclusion + ' |';
+            const logs = logSections.length ? logSections.join(NL + NL) : 'No failed job logs were available. Open the workflow run for details.';
+            const body = [
+              '## Coolify deployment failure', '',
+              '**Workflow:** ' + workflow,
+              '**Run:** [#' + run.run_number + '](' + runUrl + ')',
+              '**Branch:** ' + branch,
+              '**Commit:** ' + sha,
+              '**Conclusion:** ' + conclusion, '',
+              '### Failed jobs', '', '| Job | Status |', '|-----|--------|', failedJobTable, '',
+              '### Coolify / runner logs', '', logs, '',
+              '### Next steps', '',
+              '1. Identify the first actionable error in the logs above.',
+              '2. Fix the deployment or Coolify configuration and push the change.',
+              '3. Re-run the workflow if the fix is configuration-only.', '',
+              '---', 'Created automatically by the Coolify deployment feedback loop.', marker,
+            ].join(NL);
+            const existing = await github.rest.search.issuesAndPullRequests({ q: '"' + marker + '" repo:' + owner + '/' + repo + ' is:issue is:open', per_page: 1 });
+            if (existing.data.items.length) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: existing.data.items[0].number, body });
+              core.info('Updated existing issue #' + existing.data.items[0].number);
               return;
             }
-
-            // --- 3. Build issue title ------------------------------------
-            const title = '[CI Failure] ' + workflowName + ' #' + runNumber + ' (' + branch + ')';
-
-            // --- 4. Build issue body -------------------------------------
-            const commitMessage = run.head_commit
-              ? (run.head_commit.message || '').split('\n')[0]
-              : '(not available)';
-
-            const body = [
-              '## CI Failure Report',
-              '',
-              '**Workflow:** ' + workflowName,
-              '**Run:** [# ' + runNumber + '](' + runUrl + ')',
-              '**Branch:** `' + branch + '`',
-              '**Commit:** `' + sha + '`',
-              '**Commit message:** ' + commitMessage,
-              '**Triggered by:** `' + event + '`',
-              '**Conclusion:** `' + conclusion + '`',
-              '',
-              failedJobs.length > 0
-                ? '### Failed Jobs\n\n' +
-                  '| Job | Status |\n' +
-                  '|-----|--------|\n' +
-                  failedJobs.map(j => '| ' + j.name + ' | ' + j.conclusion + ' |').join('\n')
-                : '### Failed Jobs\n\n_(job details could not be fetched -- see the workflow run page for details)_',
-              '',
-              run.head_commit && run.head_commit.author
-                ? '**Author:** ' + (run.head_commit.author.name || run.head_commit.author.email || 'unknown')
-                : '',
-              '',
-              '### Fix Instructions',
-              '',
-              '1. Check the failing workflow run for details',
-              '2. Identify the root cause from logs',
-              '3. Push a fix to the branch',
-              '4. The issue will auto-close when CI passes',
-              '',
-              '### Logs',
-              '',
-              ':link: [View workflow run](' + runUrl + ')',
-              '',
-              '---',
-              '',
-              'Created automatically by the ci-failure workflow.',
-              '',
-              dedupMarker,
-            ].filter(l => l !== '').join('\n');
-
-            // --- 5. Compute labels based on branch and failure type -------
-            const defaultBranch = context.payload.repository?.default_branch || 'main';
-            const labels = ['ci-failure'];
-            if (branch === defaultBranch) labels.push('priority:high');
-            if (failedJobs.some(j => /test/i.test(j.name))) labels.push('type:test-failure');
-            if (failedJobs.some(j => /lint|ruff/i.test(j.name))) labels.push('type:lint');
-            if (failedJobs.some(j => /build|docker/i.test(j.name))) labels.push('type:build-failure');
-            if (event === 'pull_request') labels.push('scope:pr');
-            if (event === 'push') labels.push('scope:push');
-
-            // --- 6. Create the issue -------------------------------------
-            const created = await github.rest.issues.create({
-              owner: repo.owner,
-              repo: repo.repo,
-              title: title,
-              body: body,
-              labels: labels,
-            });
-            console.log('Created issue #' + created.data.number + ': ' + created.data.html_url);
+            const created = await github.rest.issues.create({ owner, repo, title: '[Coolify Failure] ' + workflow + ' #' + run.run_number + ' (' + branch + ')', body, labels: ['ci-failure'] });
+            core.info('Created issue #' + created.data.number + ': ' + created.data.html_url);
