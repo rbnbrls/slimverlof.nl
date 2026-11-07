@@ -15,7 +15,7 @@ permissions:
 jobs:
   quality:
     name: Lint, format, build and coverage
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # Recorded coverage gate. `npm run coverage` runs the vitest suite with these
     # as its thresholds and fails the job when any metric drops below them; they
     # are the levels measured on main at a898577 (lines 98.03%, statements 97.64%,

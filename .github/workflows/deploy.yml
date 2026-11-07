@@ -50,7 +50,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # Worst case poll budget: 60 attempts × 20s sleep = 20 min, plus one curl per
     # attempt (59 sleeps now that the final attempt no longer sleeps). 30 min
     # leaves ~10 min of headroom instead of the ~5 min the old 25 min allowed.
